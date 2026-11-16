@@ -24,7 +24,7 @@ export class WorkspaceUI {
     this.ownedIds = new Set(initial.sessions.filter(s => s.windowId === this.window.id).map(s => s.id));
     api.onData(event => this.handleData(event));
     api.onCwd(event => { const p = this.panes.get(event.id); if (p) { p.info.cwd = event.cwd; this.renderPane(p); this.updateFooter(); } });
-    api.onExit(event => { this.setStatus(event); if (event.status === 'exited' && (event.exitCode === 0 || (!event.serverId && !event.codex))) this.run(() => this.endPane(event.id)); }); api.onStatus(event => this.setStatus(event));
+    api.onExit(event => this.handleExit(event)); api.onStatus(event => this.setStatus(event));
     api.onRemoved(({ id }) => { if (this.panes.has(id)) this.removeLocal([id]); });
     api.onProjects(projects => { this.projects = projects; this.renderProjects(); });
     new ResizeObserver(() => requestAnimationFrame(() => this.fit())).observe($('#terminal-area'));
@@ -187,7 +187,11 @@ export class WorkspaceUI {
     pane.restoring = false;
     const waiting = [...(this.earlyData.get(info.id) || []), ...pane.queue]; this.earlyData.delete(info.id); pane.queue = [];
     for (const event of waiting) this.handleData(event);
-    this.renderPane(pane); return pane;
+    this.renderPane(pane);
+    // The shell can exit while attach is collecting its initial snapshot,
+    // before the service subscribes this window to exit events.
+    if (!restored && pane.info.status === 'exited') this.handleExit(pane.info);
+    return pane;
   }
   renderPane(pane) {
     const end = $('.end-pane', pane.el); end.title = t('End this session') + ' · ' + (this.platform === 'darwin' ? '⌘W' : 'Ctrl+Shift+W'); end.setAttribute('aria-label', end.title);
@@ -215,6 +219,11 @@ export class WorkspaceUI {
     if (p.restoring) { p.queue.push(event); return; }
     if (event.seq <= p.lastSeq) return;
     p.lastSeq = event.seq; p.term.write(event.data);
+  }
+  handleExit(event) {
+    this.setStatus({ ...event, status: 'exited' });
+    const info = this.panes.get(event.id)?.info;
+    if (info && (info.exitCode === 0 || (!info.serverId && !info.aliasName && !info.codex))) this.run(() => this.endPane(event.id));
   }
   setStatus(info) { const p = this.panes.get(info.id); if (p) { if (p.restoring) p.pendingStatus = { ...p.pendingStatus, ...info }; p.info = { ...p.info, ...info }; this.renderPane(p); this.updateFooter(); } }
   layout(tab) {
