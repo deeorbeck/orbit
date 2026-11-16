@@ -75,7 +75,7 @@ module.exports = (win, app) => {
         const cloneId = await evaluate('document.querySelector(".pane-group:not([hidden]) .terminal-pane").dataset.sessionId');
         assert.equal(fs.realpathSync.native(await client.request('cwd', { id: cloneId })), fs.realpathSync.native(childFolder), 'New terminal must inherit the active shell cwd.');
         await evaluate('document.querySelector("#split-button").click()');
-        await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2');
+        await until('(() => { const s = window.__orbitWorkspaceSnapshot(), t = s.tabs.find(t => t.id === s.activeTabId); return t.layout.type === "split" && document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2; })()');
         await evaluate('document.querySelector("#split-vertical-button").click()');
         await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 3');
         // The final row must fit above the pane edge, including padding, in small splits.
@@ -121,17 +121,17 @@ module.exports = (win, app) => {
         }
         const newDisposableTab = async () => {
           await evaluate('document.querySelector("#add-tab").click(); [...document.querySelectorAll(".palette-result")].find(el => el.textContent.includes("Local terminal")).click()');
-          await until(async () => (await snapshot()).tabs.length === 4);
+          await until('(() => { const s = window.__orbitWorkspaceSnapshot(), t = s.tabs.find(t => t.id === s.activeTabId); return s.tabs.length === 4 && document.querySelectorAll("[role=tab]").length === 4 && document.querySelector(".pane-group:not([hidden]) .terminal-pane")?.dataset.sessionId === t.activePaneId; })()');
         };
         await newDisposableTab();
         await evaluate('document.querySelector("#split-button").click()');
-        await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2');
+        await until('(() => { const s = window.__orbitWorkspaceSnapshot(), t = s.tabs.find(t => t.id === s.activeTabId); return t.layout.type === "split" && document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2; })()');
         const beforeClose = await snapshot();
         press('w', process.platform === 'darwin' ? ['meta'] : ['control', 'shift']);
         await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 1');
         assert.equal((await snapshot()).tabs.length, 4, 'Closing one pane must retain its tab and other pane. ' + JSON.stringify({before:beforeClose,after:await snapshot(),events:await evaluate('({exits:window.__smokeExits,removed:window.__smokeRemoved})')}));
         await evaluate('document.querySelector("#split-button").click()');
-        await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2');
+        await until('(() => { const s = window.__orbitWorkspaceSnapshot(), t = s.tabs.find(t => t.id === s.activeTabId); return t.layout.type === "split" && document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2; })()');
         press('w', process.platform === 'darwin' ? ['meta', 'shift'] : ['control', 'alt', 'shift']);
         await until(async () => (await snapshot()).tabs.length === 3);
         await newDisposableTab();
