@@ -73,7 +73,7 @@ module.exports = (win, app) => {
         win.setSize(1320, 860);
         await until(screensFit);
         const paneIds = await evaluate('[...document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane")].map(el => el.dataset.sessionId)');
-        await evaluate('document.querySelector(".pane-group:not([hidden]) .terminal-pane:last-child .xterm-helper-textarea").focus()');
+        await evaluate('[...document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane")].at(-1).dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))');
         // Native menu accelerators and xterm keyboard routing must choose the same spatial pane.
         const menu = require('electron').Menu.getApplicationMenu();
         const sessionMenu = menu.items.find(item => item.submenu?.items.some(entry => entry.label === 'Focus pane above')).submenu;

@@ -1,3 +1,8 @@
+## Orbit Terminal 0.3.4 — verified pane navigation and visible input
+
+- Includes the small-pane input geometry, live-bottom restoration and Option-arrow / tab navigation fixes from 0.3.2–0.3.3.
+- Native navigation tests explicitly activate their source pane before exercising the shortcut.
+
 ## Orbit Terminal 0.3.3 — restore the visible input position
 
 - Reattached sessions open at the live terminal bottom. Resizing follows the bottom when already there, while preserving intentional scrollback browsing.
