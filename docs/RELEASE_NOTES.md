@@ -1,21 +1,11 @@
-## Orbit Terminal 0.3.11 — close safely while a split is opening
+## Orbit Terminal 0.3.11 — reliable tab switching and pane closing
 
-- Wait for an in-progress terminal attach/split before ending a pane or tab, so a close cannot dispose the old layout while its new pane is still mounting.
-- Includes repeated Ctrl+Tab / Ctrl+Shift+Tab, single-dispatch pane/tab shortcuts and automatic local-shell close on exit.
-
-## Orbit Terminal 0.3.10 — single-dispatch tab and close shortcuts
-
-- Ctrl+Tab / Ctrl+Shift+Tab and pane/tab close shortcuts are handled only before terminal input; native menus display them without registering a second accelerator.
-- Prevent overlapping close requests and remove pane references before disposing their terminal.
-- Includes reliable repeated tab cycling, Command+W pane close, Command+Shift+W tab close and automatic local-shell close on exit.
-
-## Orbit Terminal 0.3.9 — reliable tab switching and pane closing
-
-- Intercept Ctrl+Tab / Ctrl+Shift+Tab before Chromium or xterm forwards them to the shell, including after focus moves into a different terminal.
-- Command+W closes the active pane; Command+Shift+W closes the current tab. Closing a native window while keeping its sessions uses Command+Option+Shift+W.
-- Local shell exit closes its pane automatically, including a nonzero last status. Failed Codex/SSH and stopped sessions keep their screen and restart action.
-- Track keyboard focus inside a pane and show close shortcuts on pane/tab buttons.
-- Native regression checks cycle through tabs eight times with terminal input focused, then close a pane, tab and shell without quitting Orbit.
+- Ctrl+Tab / Ctrl+Shift+Tab repeatedly switch tabs while terminal input has focus, without sending the shortcut into the shell.
+- Command+W closes the active pane; Command+Shift+W ends every pane in the current tab. Pane and tab buttons display these shortcuts.
+- Command+Q quits Orbit while preserving sessions. Command+Option+Shift+W closes only the native window while preserving sessions.
+- Local shell exit closes its pane, including a nonzero exit status or a shell that exits during initial attachment. Failed SSH/Codex sessions retain their output and restart action.
+- Serialize close actions with pending pane creation, and prevent duplicate menu/input dispatch and overlapping close requests.
+- Native regression checks repeat tab cycling, close a single pane, close a split tab, exit a shell and restore surviving sessions with the same process IDs.
 
 ## Orbit Terminal 0.3.8 — futuristic font collection
 
