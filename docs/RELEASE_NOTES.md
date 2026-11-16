@@ -1,3 +1,9 @@
+## Orbit Terminal 0.3.7 — small-pane input and iTerm-style navigation
+
+- Includes visible input in small splits, live-bottom restoration, Option-arrow pane navigation and Command bracket / number tab shortcuts.
+- Verify navigation using actual panel geometry, including layouts whose nested split is on the left.
+- Includes pending-preference protection from 0.3.6.
+
 ## Orbit Terminal 0.3.6 — terminal input, navigation and reliable preferences
 
 - Includes visible input in small panes, restored live-bottom position, directional Option-arrow navigation and numbered / bracket tab shortcuts.

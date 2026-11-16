@@ -75,10 +75,10 @@ module.exports = (win, app) => {
         assert.equal(await evaluate(screensFit), true, 'Bottom input row must stay inside the small pane.');
         win.setSize(1320, 860);
         await until(screensFit);
-        const paneIds = await evaluate('[...document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane")].map(el => el.dataset.sessionId)');
+        const paneIds = await evaluate(`(() => { const rects = [...document.querySelectorAll('.pane-group:not([hidden]) .terminal-pane')].map(el => ({ id: el.dataset.sessionId, ...el.getBoundingClientRect().toJSON() })); const bottom = rects.toSorted((a,b) => b.top-a.top)[0]; const top = rects.find(r => r.id !== bottom.id && r.bottom <= bottom.top && r.left === bottom.left); if (!top) throw new Error('Expected a vertical pair'); return [rects.find(r => r.id !== top.id && r.id !== bottom.id).id, top.id, bottom.id]; })()`);
         win.focus(); win.webContents.focus();
         await until(() => win.isFocused());
-        await evaluate('[...document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane")].at(-1).dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))');
+        await evaluate(`document.querySelector('[data-session-id="${paneIds[2]}"]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))`);
         const activeId = () => evaluate('window.__orbitWorkspaceSnapshot().tabs.find(t => t.id === window.__orbitWorkspaceSnapshot().activeTabId).activePaneId');
         await until(async () => await activeId() === paneIds[2]);
         const arrow = keyCode => { win.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers: ['alt'] }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers: ['alt'] }); };
