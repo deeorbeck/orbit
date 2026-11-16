@@ -24,7 +24,7 @@ test('detached PTY survives its GUI parent exit with PID, variables, cwd and alt
     const command = process.platform === 'win32' ? `Set-Location -LiteralPath '${next.replaceAll("'", "''")}'; Write-Output ('RESTORED:'+$global:ORBIT_KEEP)` : `cd '${next.replaceAll("'", "'\\''")}'; printf '\\nRESTORED:%s\\n' "$ORBIT_KEEP"`;
     await client.request('write', { id: original.id, data: command + '\r' });
     await until(async () => (await client.request('attach', { id: original.id })).snapshot.includes('RESTORED:kept'));
-    const currentCwd = await until(async () => { const value = await client.request('cwd', { id: original.id }); return value && fs.realpathSync(value) === fs.realpathSync(next) && value; });
+    let currentCwd; try { currentCwd = await until(async () => { const value = await client.request('cwd', { id: original.id }); return value && fs.realpathSync(value) === fs.realpathSync(next) && value; }); } catch (error) { throw new Error(error.message + ' cwd=' + await client.request('cwd', { id: original.id }) + ' snapshot=' + JSON.stringify((await client.request('attach', { id: original.id })).snapshot)); }
     assert.equal(fs.realpathSync(currentCwd), fs.realpathSync(next));
     const alternate = process.platform === 'win32' ? "[Console]::Write([char]27+'[?1049hALT_STATE'+[char]27+'[3;8H'); Start-Sleep -Seconds 15" : "printf '\\033[?1049hALT_STATE\\033[3;8H'; sleep 15";
     await client.request('write', { id: original.id, data: alternate + '\r' });
