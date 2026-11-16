@@ -6,7 +6,7 @@ const { defaultShell } = require('./platform.cjs');
 
 const defaults = {
   version: 1,
-  appearance: { fontSize: 14, fontFamily: 'SFMono-Regular, Cascadia Mono, Menlo, Consolas, monospace', wallpaper: true, wallpaperMode: 'contain', wallpaperOpacity: 0.28, dim: 0.25, sidebar: true, theme: 'graphite' },
+  appearance: { fontSize: 14, fontFamily: '', wallpaper: true, wallpaperMode: 'contain', wallpaperOpacity: 0.28, dim: 0.25, sidebar: true, theme: 'graphite' },
   shell: defaultShell(),
   startingDirectory: os.homedir(),
   codexCommand: 'codex',
@@ -21,7 +21,7 @@ function normalize(raw = {}) {
     version: 1,
     appearance: {
       fontSize: number(a.fontSize, 14, 10, 28),
-      fontFamily: text(a.fontFamily, defaults.appearance.fontFamily, 160),
+      fontFamily: ['SFMono-Regular, Menlo, monospace', 'SFMono-Regular, Cascadia Mono, Menlo, Consolas, monospace'].includes(a.fontFamily) ? '' : text(a.fontFamily, '', 160),
       wallpaper: typeof a.wallpaper === 'boolean' ? a.wallpaper : true,
       wallpaperMode: ['contain', 'cover', 'fill'].includes(a.wallpaperMode) ? a.wallpaperMode : 'contain',
       wallpaperOpacity: number(a.wallpaperOpacity, 0.28, 0, 1),
@@ -59,13 +59,15 @@ function remoteCodexCommand(command) {
   const quoted = "'" + command.replace(/'/g, "'\\''") + "'";
   return 'exec "${SHELL:-/bin/sh}" -lc ' + quoted;
 }
-function remoteSessionCommand(server, codexCommand) {
+function remoteSessionCommand(server, codexCommand, context = {}) {
   const quote = value => "'" + value.replace(/'/g, "'\\''") + "'";
   if (!server.persistent) return codexCommand ? remoteCodexCommand(`exec ${codexCommand}`) : null;
   const sessionName = (server.sessionName || 'orbit').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) + (codexCommand ? '-codex' : '');
   const missing = 'Orbit: tmux topilmadi. Sessiyani saqlash uchun serverda tmux o‘rnating (Ubuntu/Debian: sudo apt install tmux). Oddiy SSH uchun profil sozlamasidagi doimiy sessiyani o‘chiring.';
   // Fail clearly instead of silently promising durability in an ordinary shell.
-  const command = `if ! command -v tmux >/dev/null 2>&1; then printf '%s\\n' ${quote(missing)}; exit 69; fi; printf '\\033]777;OrbitReady\\007'; exec tmux new-session -A -s ${quote(sessionName)}${codexCommand ? ' ' + quote(remoteCodexCommand(`exec ${codexCommand}`)) : ''}`;
+  const parent = typeof context.sourceSession === 'string' && /^[a-zA-Z0-9_-]+$/.test(context.sourceSession) ? context.sourceSession : null;
+  const start = parent ? `orbit_start=$(tmux display-message -p -t ${quote(parent)} '#{pane_current_path}' 2>/dev/null); [ -d "$orbit_start" ] || orbit_start="$HOME"; ` : 'orbit_start="$HOME"; ';
+  const command = `if ! command -v tmux >/dev/null 2>&1; then printf '%s\\n' ${quote(missing)}; exit 69; fi; ${start}printf '\\033]7;file://localhost%s\\007' "$orbit_start"; printf '\\033]777;OrbitReady\\007'; exec tmux new-session -A -s ${quote(sessionName)} -c "$orbit_start"${codexCommand ? ' ' + quote(remoteCodexCommand(`exec ${codexCommand}`)) : ''}`;
   return remoteCodexCommand(command);
 }
 function saveConfig(file, value) {

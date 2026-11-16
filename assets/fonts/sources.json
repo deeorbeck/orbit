@@ -1,0 +1,82 @@
+[
+  {
+    "family": "IBM Plex Mono",
+    "file": "ibmplexmono.woff2",
+    "url": "https://fonts.gstatic.com/s/ibmplexmono/v23/-F63fjptAgt5VM-kVkqdyU8n1i8q131nj-o.woff2",
+    "css": "https://fonts.googleapis.com/css2?family=IBM%20Plex%20Mono%3Awght%40400&display=swap",
+    "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexmono/OFL.txt",
+    "sha256": "52de70091213c9eab340e2a7ac59e7b6b2b94e089bf69ef38479b22cfde4274c"
+  },
+  {
+    "family": "JetBrains Mono",
+    "file": "jetbrainsmono.woff2",
+    "url": "https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxTOlOVk6OThhvA.woff2",
+    "css": "https://fonts.googleapis.com/css2?family=JetBrains%20Mono%3Awght%40400&display=swap",
+    "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/jetbrainsmono/OFL.txt",
+    "sha256": "d3dcdccdaba31643defe2317942155d4af3ee03951d058adbe8bc02b13e61b0a"
+  },
+  {
+    "family": "Geist Mono",
+    "file": "geistmono.woff2",
+    "url": "https://fonts.gstatic.com/s/geistmono/v6/or3yQ6H-1_WfwkMZI_qYPLs1a-t7PU0AbeE9KK5U5Cl4PuCTfNg.woff2",
+    "css": "https://fonts.googleapis.com/css2?family=Geist%20Mono%3Awght%40400&display=swap",
+    "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/geistmono/OFL.txt",
+    "sha256": "23840067d1dda8749b421a47c3e56205fa78c0d58d40baf3cc4d625fbe667f36"
+  },
+  {
+    "family": "Space Mono",
+    "file": "spacemono.woff2",
+    "url": "https://fonts.gstatic.com/s/spacemono/v17/i7dPIFZifjKcF5UAWdDRYEF8RXi4EwQ.woff2",
+    "css": "https://fonts.googleapis.com/css2?family=Space%20Mono%3Awght%40400&display=swap",
+    "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/spacemono/OFL.txt",
+    "sha256": "e0c8e616bda27642f4c3cebaecff6525d901e73afc8a227cbbb0f2af4810f300"
+  },
+  {
+    "family": "Fira Code",
+    "file": "firacode.woff2",
+    "url": "https://fonts.gstatic.com/s/firacode/v27/uU9eCBsR6Z2vfE9aq3bL0fxyUs4tcw4W_D1sJVD7NuzlojwUKQ.woff2",
+    "css": "https://fonts.googleapis.com/css2?family=Fira%20Code%3Awght%40400&display=swap",
+    "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/firacode/OFL.txt",
+    "sha256": "5c18638f71017f85e57ee3ae86cdb2ed1f7f0fb57ac0ebea115354f429ba99a6"
+  },
+  {
+    "family": "Source Code Pro",
+    "file": "sourcecodepro.woff2",
+    "url": "https://fonts.gstatic.com/s/sourcecodepro/v32/HI_diYsKILxRpg3hIP6sJ7fM7PqPMcMnZFqUwX28DMyQtMlrTFcZZJmOpw.woff2",
+    "css": "https://fonts.googleapis.com/css2?family=Source%20Code%20Pro%3Awght%40400&display=swap",
+    "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/sourcecodepro/OFL.txt",
+    "sha256": "609df37bbf325f6d7b0a1eef589fd0bdf700d808576b112b7f3fc810ef2a0e87"
+  },
+  {
+    "family": "Victor Mono",
+    "file": "victormono.woff2",
+    "url": "https://fonts.gstatic.com/s/victormono/v5/Yq6H-LGQWyfv-LGy7lEO09xRn-T81AVB_tCyO879g9aPdUMtbKcp.woff2",
+    "css": "https://fonts.googleapis.com/css2?family=Victor%20Mono%3Awght%40400&display=swap",
+    "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/victormono/OFL.txt",
+    "sha256": "70c3c5f14e97e6edb3ac4facece7ad18b6dd5fdfb1d457d9dcff4d31cf4d435c"
+  },
+  {
+    "family": "Roboto Mono",
+    "file": "robotomono.woff2",
+    "url": "https://fonts.gstatic.com/s/robotomono/v31/L0xuDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vq_ROW4AJi8SJQt.woff2",
+    "css": "https://fonts.googleapis.com/css2?family=Roboto%20Mono%3Awght%40400&display=swap",
+    "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/robotomono/OFL.txt",
+    "sha256": "c49e5f206c0ba05fab722703bcfc6c83d517b15cb50dd56b5ce4e4d9fafa49a4"
+  },
+  {
+    "family": "Inconsolata",
+    "file": "inconsolata.woff2",
+    "url": "https://fonts.gstatic.com/s/inconsolata/v37/QldgNThLqRwH-OJ1UHjlKENVzkWGVkL3GZQmAwLYxYWI2qfdm7Lpp4U8WR32l3WdycuJDA.woff2",
+    "css": "https://fonts.googleapis.com/css2?family=Inconsolata%3Awght%40400&display=swap",
+    "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/inconsolata/OFL.txt",
+    "sha256": "74731858d42c11df77235ac23265df96d65674a608d91bd493487bb01e54b551"
+  },
+  {
+    "family": "Cutive Mono",
+    "file": "cutivemono.woff2",
+    "url": "https://fonts.gstatic.com/s/cutivemono/v23/m8JWjfRfY7WVjVi2E-K9H6RCTm6o39uc.woff2",
+    "css": "https://fonts.googleapis.com/css2?family=Cutive%20Mono%3Awght%40400&display=swap",
+    "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/cutivemono/OFL.txt",
+    "sha256": "68b6c6ee3cecad6525a788292c750757a6b1430572397fa822c1f8f76588bd34"
+  }
+]

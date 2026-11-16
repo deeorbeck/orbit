@@ -21,11 +21,13 @@ The initial community builds have no commercial Windows certificate or Apple not
 
 ## Features
 
-- **Real terminals:** login shell on Mac/Linux, PowerShell on Windows, 15,000-line scrollback, terminal search, tabs and up to three resizable split panes.
+- **Project workspaces:** separate projects, each with multiple shell/Codex/SSH tabs, nested horizontal and vertical splits (up to 12 panes per tab), and additional native Orbit windows. New local panes inherit the active process’s actual working directory.
+- **Surviving GUI exit:** a detached local service keeps the same shell/Codex/SSH processes running after all Orbit windows quit. Reopen to restore window layouts, tabs, screens and the same process PIDs.
+- **Real terminals:** login shell on Mac/Linux, PowerShell on Windows, searchable scrollback, per-pane type icons and current-folder headers.
 - **Codex:** one-click local launch in your chosen directory, or a separate Codex workspace on an SSH server. Codex is installed/authenticated separately.
-- **Servers:** saved SSH profiles, private-key path selection, system SSH agent/config support and Host alias import. Passwords, passphrases and host-key prompts stay in the terminal.
+- **Ready connections:** the new-session picker automatically lists your SSH-config hosts and SSH aliases from zsh/bash, alongside local terminal, Codex and manually saved profiles. Existing key/agent authentication is reused. Passwords, passphrases and host-key prompts stay in the terminal.
 - **Durable remote work:** 15-second SSH keepalives, named tmux sessions, manual reattachment and bounded automatic reconnection after an established connection drops.
-- **10 designs:** Graphite, Coding, Modern, Futuristic, Midnight, Warm, Dracula, Nord, Solarized and Paper. Themes change UI/terminal colors and selected type/shape details.
+- **10 designs:** Graphite, Coding, Modern, Futuristic, Midnight, Warm, Dracula, Nord, Solarized and Paper. Each theme changes terminal fonts as well as colors and type/shape details. Ten open-license fonts are bundled and work offline. A font override is optional; the default follows the theme.
 - **Your background:** fit the entire image, fill or stretch it; change brightness, dimming, fonts and sidebar live.
 - **Easy editing:** one `config.json`, with valid external edits reloaded automatically. No cloud service or telemetry.
 
@@ -33,17 +35,40 @@ The initial community builds have no commercial Windows certificate or Apple not
 
 | Action | Mac | Windows / Linux |
 | --- | --- | --- |
-| New terminal | ⌘T | Ctrl+Shift+T |
-| New Codex tab | ⌘Shift+N | Ctrl+Shift+N |
-| Split pane | ⌘D | Ctrl+Shift+D |
-| Close pane | ⌘W | Ctrl+Shift+W |
+| New local terminal | ⌘T | Ctrl+Shift+T |
+| Terminal/server picker | ⌘Shift+T | Ctrl+Alt+T |
+| New Codex tab | ⌘Shift+N | Ctrl+Alt+C |
+| New Orbit window | ⌘N | Ctrl+Shift+N |
+| Project picker | ⌘P | Ctrl+Shift+P |
+| Add project | ⌘Alt+P | Ctrl+Alt+P |
+| Split side by side | ⌘D | Ctrl+Shift+D |
+| Split top / bottom | ⌘Shift+D | Ctrl+Alt+D |
+| Next / previous pane | ⌘Alt+→ / ← | Ctrl+Alt+→ / ← |
+| End pane (confirmation) | ⌘W | Ctrl+Shift+W |
+| Close window, keep sessions | ⌘Shift+W | Ctrl+Alt+W |
+| Rename tab | ⌘Shift+R | Ctrl+Alt+R |
 | Command palette | ⌘K | Ctrl+Shift+K |
 | Find in terminal | ⌘F | Ctrl+Shift+F |
 | Settings | ⌘, | Ctrl+, |
-| Next tab | Ctrl+Tab | Ctrl+Tab |
+| Next / previous tab | Ctrl+Tab / Ctrl+Shift+Tab | Ctrl+Tab / Ctrl+Shift+Tab |
+| Next / previous project | ⌘Alt+↓ / ↑ | Ctrl+Alt+↓ / ↑ |
 | Copy / paste | ⌘C / ⌘V | Ctrl+Shift+C / Ctrl+Shift+V |
 
-On Windows/Linux, normal Ctrl+C, Ctrl+D and Ctrl+W remain available to the shell. Closing a pane stops local commands in it; remote tmux work continues if the server is alive.
+On Windows/Linux, normal Ctrl+C, Ctrl+D, Ctrl+W and Ctrl+Z remain available to the shell. All shortcuts are also shown in Settings.
+
+## Projects, windows and keeping local work alive
+
+Add a project with its name and root folder from **LOYIHALAR +**. Every project keeps its own tabs and split layouts. Switch projects with the sidebar or project picker. The **+** in the tab bar opens a chooser for local terminal, Codex and existing server/alias connections. Keyboard users can open a local terminal directly.
+
+A new local terminal, Codex process, split, or additional Orbit window inherits the active local process’s current folder. This is queried from the real process on macOS/Linux and tracked by a prompt hook on Windows PowerShell. For a manually configured SSH/tmux profile, splitting from an existing remote pane also looks up that tmux pane’s current directory. Ordinary SSH aliases retain their own startup command/directory.
+
+**Closing a window or quitting Orbit detaches the GUI; it does not end processes.** A detached local service owns PTYs and a headless terminal per session. Reopening restores projects, windows, tabs, split ratios, screens and the same running processes. The service answers terminal device reports while the GUI is gone, allowing interactive TUIs to continue.
+
+To stop work intentionally, use a pane’s **× / Sessiyani tugatish** and confirm, or choose **Barcha sessiyalarni tugatib chiqish** from the application menu. Multiple panes on the same server get independent remote tmux session names; reconnecting a pane reuses its own name.
+
+This applies while your computer and the local session service remain alive. A reboot, logout, OOM kill or service crash ends local processes. In that case Orbit shows the saved screen as **stopped** and offers an explicit restart rather than silently rerunning a Codex task or claiming the process survived. A remote tmux job may still be available after a local reboot.
+
+Workspaces and bounded terminal-screen snapshots are private local files. Warm reconnection restores the service’s recent scrollback (up to 10,000 rows); disk snapshots retain up to 3,000 rows for stopped-session recovery. Config and snapshots never go to GitHub. Processes already running under Orbit 0.2 cannot be transferred into the new 0.3 service; persistence starts with sessions opened in 0.3.
 
 ## Preventing lost SSH work
 
@@ -51,11 +76,11 @@ A keepalive is not an unbreakable connection. Network loss, laptop sleep, server
 
 New/imported profiles enable **Doimiy sessiya** (persistent session) by default. This requires **tmux on the remote server**. For example, on Ubuntu/Debian, install it there with `sudo apt install tmux`. Orbit does not install packages or change sshd settings automatically. If tmux is absent, it reports the problem instead of silently claiming persistence; disable persistent mode for ordinary SSH.
 
-Orbit creates or attaches a named tmux session per server profile. Codex uses a separate `-codex` session. When SSH drops or a local tab closes, remote processes can keep running. Reconnect from the sidebar or click **Sessiyani davom ettirish** to reattach. Authentication/2FA still applies. Multiple tabs for one profile share the same named workspace; use separate profile/session names for independent workspaces.
+Orbit creates or attaches a named tmux session per remote pane. Codex uses a separate `-codex` session. When SSH drops or a local tab closes, remote processes can keep running. Reconnect from the sidebar or click **Sessiyani davom ettirish** to reattach. Authentication/2FA still applies. Parallel tabs and panels have independent names; reconnecting the same panel attaches to its previous workspace.
 
 **Avtomatik qayta ulanish** retries a previously authenticated connection up to five times with 2/4/8/16/30-second backoff. It does not loop on an initial authentication failure. It can be stopped or disabled per profile. `Ctrl+B`, then `D` detaches tmux intentionally; `exit` ends the remote shell intentionally.
 
-This does not preserve work through server reboot, tmux termination, OOM kills, storage loss or enforced admin policies. Local processes are not restored after quitting Orbit.
+This does not preserve remote work through server reboot, tmux termination, OOM kills, storage loss or enforced admin policies. Local processes survive closing Orbit through the local service, as described above. Auto-discovered plain SSH/shell aliases run as originally configured; enabling remote tmux protection requires a saved profile or tmux in your alias itself.
 
 ## Configuration
 
@@ -114,7 +139,7 @@ npm run smoke
 npm start
 ```
 
-`npm ci` downloads Electron and rebuilds node-pty for your platform. The smoke test launches the real application with a disposable profile and checks a real shell, all themes, tabs, splits, the wallpaper and config persistence. Linux headless CI uses Xvfb. The tmux durability test uses an isolated local socket and verifies that a shell PID and variable survive a dropped PTY and reattachment; it skips if tmux is not installed.
+`npm ci` downloads Electron and rebuilds node-pty for your platform. The smoke test launches the real application twice with the same disposable profile, closes every GUI process in between, and checks identical PTY PIDs, shell variables, cwd, multiple projects, nested splits and native windows. It checks all ten bundled fonts and the connection picker as well. Linux headless CI uses Xvfb. The tmux durability test uses an isolated local socket and verifies that a shell PID and variable survive a dropped PTY and reattachment; it skips if tmux is not installed.
 
 ```sh
 npm run dist:mac    # run on Mac
@@ -127,7 +152,11 @@ Installers go in `out/`. Build on the target OS for native PTY compatibility. Se
 
 ## Source map
 
-- `src/main.cjs`, `src/preload.cjs`: desktop bridge and PTY/SSH lifecycle.
+- `src/main.cjs`, `src/preload.cjs`: native windows, project routing and desktop bridge.
+- `src/session-service.cjs`, `src/session-client.cjs`: detached authenticated PTY service.
+- `src/workspaces.cjs`, `src/workspace-ui.js`: project/window metadata and nested terminal layouts.
+- `src/connections.cjs`: local SSH host and shell-alias discovery.
+- `src/shortcuts.cjs`: platform-specific shortcut definitions.
 - `src/renderer.js`, `src/index.html`, `src/style.css`: interface.
 - `src/themes.cjs`: edit all ten theme palettes here.
 - `src/config.cjs`, `src/platform.cjs`: persistence, validation and OS behavior.

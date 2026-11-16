@@ -1,29 +1,23 @@
-## Orbit Terminal 0.2.1
+## Orbit Terminal 0.3.0 — project workspaces and surviving GUI exit
 
-Open-source terminal for coding, Codex and persistent SSH workspaces.
-
-- Real local shell, tabs, split panes, search and a command palette.
-- One-click local and remote Codex launch (Codex is installed separately).
-- Ten themes: Graphite, Coding, Modern, Futuristic, Midnight, Warm, Dracula, Nord, Solarized and Paper.
-- Custom wallpapers with fit/fill/stretch and live brightness controls.
-- SSH profiles, key selection, SSH config import and editable live JSON configuration.
-- 15-second SSH keepalives, named remote tmux sessions, and bounded automatic reconnection after an established connection drops.
-- Cross-platform desktop tests wait for shell readiness and completed text insertion before submitting commands.
+- Multiple projects, each with shell, Codex and SSH tabs.
+- Nested side-by-side and top/bottom splits, up to 12 panes per tab, plus additional native Orbit windows.
+- A detached authenticated local service keeps the same terminal processes alive when all Orbit GUI windows quit. Reopening restores projects, windows, layouts, terminal screens and live PIDs.
+- New local terminals/Codex/splits/windows inherit the active process’s actual cwd. Remote tmux splits inherit the source remote pane directory.
+- Existing SSH Host aliases and zsh/bash SSH aliases automatically appear in the new-session chooser. Existing SSH keys/agents are reused; no passwords or keys are copied into the app.
+- Distinct Terminal, Codex, SSH and SSH+Codex icons, cwd headers, renamed tabs and expanded shortcuts.
+- Ten themes now include ten bundled open-license fonts, with a per-user font override option.
+- Expanded native tests close and relaunch the GUI, checking the same process PIDs, variables, cwd, nested layouts and two native windows. Packaged applications are tested before release too.
 
 ### Download
 
-Choose a file for your operating system:
+- Windows x64: `windows-x64-setup.exe`.
+- Apple Silicon / Intel Mac: `macos-arm64.dmg` / `macos-x64.dmg`.
+- Linux x64: `linux-x86_64.AppImage` or `linux-amd64.deb`.
+- Alternative Mac ZIP bundles and `SHA256SUMS.txt` are included.
 
-- **Windows x64:** `windows-x64-setup.exe` — guided installer.
-- **Apple Silicon Mac:** `macos-arm64.dmg` — drag Orbit to Applications.
-- **Intel Mac:** `macos-x64.dmg`.
-- **Linux x64:** `.AppImage` (portable) or `.deb` (Debian/Ubuntu).
-- `.zip` files are alternative Mac application bundles. `SHA256SUMS.txt` contains download checksums.
+### Important behavior
 
-### Requirements and current limits
+Closing Orbit now keeps local processes running. End a pane explicitly or use **Barcha sessiyalarni tugatib chiqish** to stop them. A reboot/logout/service crash still ends local processes; stopped sessions show their saved screen and require an explicit restart. Private bounded screen snapshots are stored locally. Sessions opened by 0.2 cannot be transferred into the new service; persistence begins with sessions opened by 0.3.
 
-The Windows build uses PowerShell; Mac/Linux use a login shell. OpenSSH must be installed for SSH. Codex must be installed/authenticated separately, including on a remote server when used there. Persistent remote sessions require `tmux` on the server; Orbit reports a missing tmux instead of silently claiming durability. Keepalive cannot guarantee a network connection; tmux allows reattachment while the server and its processes remain alive.
-
-These initial community installers have no commercial Windows code signature or Apple notarization; macOS apps use an ad-hoc signature. OS trust dialogs may appear. Source, tests and build workflows are included under the MIT license.
-
-UI language is currently Uzbek. Running local processes are not restored after closing the app. Remote tmux workspaces can be reattached.
+Remote tmux protection still requires tmux on the server. Ordinary discovered aliases run exactly as configured, without automatic tmux injection. Codex is installed/authenticated separately. UI language is Uzbek. Mac builds are ad-hoc signed without Apple notarization; Windows installers have no commercial signing certificate. Source code is MIT licensed; bundled fonts carry their own OFL notices.

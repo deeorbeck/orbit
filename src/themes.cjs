@@ -11,4 +11,17 @@ const themes = {
   solarized: { name: 'Solarized', description: 'Low contrast, long focus', base: '#002b36', side: '#073642', bar: '#0d3e49', terminal: '#00252f', text: '#c6d6ce', muted: '#a2b7af', faint: '#809c98', accent: '#c4b26b', foreground: '#b9cdc6' },
   paper: { name: 'Paper', description: 'A calm light workspace', light: true, base: '#f4f1e9', side: '#eae6dc', bar: '#fdfbf5', terminal: '#faf7ef', text: '#353d3b', muted: '#626e68', faint: '#7b857a', accent: '#85714b', foreground: '#364b43' },
 };
+const typography = {
+  graphite: ['IBM Plex Mono', '-apple-system, BlinkMacSystemFont, sans-serif', 1.25],
+  coding: ['JetBrains Mono', '"IBM Plex Mono", monospace', 1.3],
+  modern: ['Geist Mono', '-apple-system, BlinkMacSystemFont, sans-serif', 1.3],
+  futuristic: ['Space Mono', '"Space Mono", monospace', 1.35],
+  midnight: ['Fira Code', '-apple-system, BlinkMacSystemFont, sans-serif', 1.3],
+  warm: ['Source Code Pro', '"Source Code Pro", monospace', 1.3],
+  dracula: ['Victor Mono', '"Victor Mono", monospace', 1.35],
+  nord: ['Roboto Mono', '-apple-system, BlinkMacSystemFont, sans-serif', 1.35],
+  solarized: ['Inconsolata', '"Inconsolata", monospace', 1.3],
+  paper: ['Cutive Mono', '"Cutive Mono", monospace', 1.3],
+};
+for (const [id, [fontName, uiFont, lineHeight]] of Object.entries(typography)) Object.assign(themes[id], { fontName, fontFamily: `"${fontName}", monospace`, uiFont, lineHeight });
 module.exports = { themes, themeIds: Object.keys(themes) };

@@ -1,7 +1,7 @@
 {
   "name": "orbit-terminal",
   "productName": "Orbit Terminal",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "An open-source desktop terminal for Codex, SSH servers and persistent workspaces",
   "main": "src/main.cjs",
   "private": true,
@@ -22,7 +22,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "build": "esbuild src/renderer.js --bundle --outfile=dist/renderer.js --loader:.css=css",
+    "build": "esbuild src/renderer.js --bundle --outfile=dist/renderer.js --loader:.css=css --loader:.woff2=file --asset-names=fonts/[name]-[hash]",
     "start": "npm run build && electron .",
     "test": "node --test tests/*.test.cjs",
     "postinstall": "node node_modules/electron/install.js && electron-builder install-app-deps",
@@ -35,15 +35,17 @@
     "smoke": "node scripts/smoke.cjs"
   },
   "dependencies": {
-    "@xterm/xterm": "^6.0.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-search": "^0.16.0",
+    "@xterm/addon-serialize": "^0.14.0",
+    "@xterm/headless": "^6.0.0",
+    "@xterm/xterm": "^6.0.0",
     "node-pty": "^1.1.0"
   },
   "devDependencies": {
+    "agent-browser": "latest",
     "electron": "^45.3.2",
     "electron-builder": "26.18.0",
-    "esbuild": "^0.25.0",
-    "agent-browser": "latest"
+    "esbuild": "^0.25.0"
   }
 }
