@@ -26,9 +26,9 @@ test('detached PTY survives its GUI parent exit with PID, variables, cwd and alt
     await until(async () => (await client.request('attach', { id: original.id })).snapshot.includes('RESTORED:kept'));
     let currentCwd; try { currentCwd = await until(async () => { const value = await client.request('cwd', { id: original.id }); return value && fs.realpathSync.native(value) === fs.realpathSync.native(next) && value; }); } catch (error) { throw new Error(error.message + ' cwd=' + await client.request('cwd', { id: original.id }) + ' snapshot=' + JSON.stringify((await client.request('attach', { id: original.id })).snapshot)); }
     assert.equal(fs.realpathSync.native(currentCwd), fs.realpathSync.native(next));
-    const alternate = process.platform === 'win32' ? "[Console]::Write([char]27+'[?1049hALT_STATE'+[char]27+'[3;8H'); Start-Sleep -Seconds 15" : "printf '\\033[?1049hALT_STATE\\033[3;8H'; sleep 15";
+    const alternate = process.platform === 'win32' ? `& '${process.execPath.replaceAll("'", "''")}' -e "eval(Buffer.from('${Buffer.from('process.stdout.write("\\x1b[?1049hALT_STATE\\x1b[3;8H"); setTimeout(()=>{},15000)').toString('base64')}','base64').toString())"` : "printf '\\033[?1049hALT_STATE\\033[3;8H'; sleep 15";
     await client.request('write', { id: original.id, data: alternate + '\r' });
-    await until(async () => (await client.request('attach', { id: original.id })).snapshot.includes('\x1b[?1049h'));
+    let altSnapshot; try { await until(async () => { altSnapshot = (await client.request('attach', { id: original.id })).snapshot; return altSnapshot.includes('\x1b[?1049h'); }); } catch (error) { throw new Error(error.message + ' alternate=' + JSON.stringify(altSnapshot)); }
     client.disconnect(); client = await new SessionClient(data).start();
     const restored = await client.request('attach', { id: original.id });
     assert.equal(restored.info.pid, original.pid);
