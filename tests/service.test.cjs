@@ -64,9 +64,9 @@ test('a stopped service restores a private screen snapshot without pretending it
   let client = await new SessionClient(data).start();
   try {
     const id = randomUUID(), original = await client.request('create', { id, options: { cwd: data, projectId: 'cold', config } });
-    const command = process.platform === 'win32' ? "Write-Output ('SCREEN:'+'orbit-🌗-o‘zbek')" : "printf '\\nSCREEN:%s\\n' 'orbit-🌗-o‘zbek'";
+    const command = process.platform === 'win32' ? "Write-Output ('SCREEN:orbit-'+[char]0xd83c+[char]0xdf17+'-o'+[char]0x2018+'zbek')" : "printf '\\nSCREEN:%s\\n' 'orbit-🌗-o‘zbek'";
     await client.request('write', { id, data: command + '\r' });
-    await until(async () => (await client.request('attach', { id })).snapshot.includes('SCREEN:orbit-🌗-o‘zbek'));
+    let lastScreen; try { await until(async () => { lastScreen = (await client.request('attach', { id })).snapshot; return lastScreen.includes('SCREEN:orbit-🌗-o‘zbek'); }); } catch (error) { throw new Error(error.message + JSON.stringify(lastScreen)); }
     await client.request('shutdown'); client.disconnect();
     await until(async () => !fs.existsSync(path.join(data, 'service.lock')));
     client = await new SessionClient(data).start();

@@ -53,6 +53,7 @@ async function main(directory) {
     const s = { info: metadata, options, terminal, serialize, cwd: metadata.cwd, status: 'stopped', seq: 0, exitCode: metadata.exitCode, clients: new Set(), wasConnected: false, reconnectAttempts: 0 };
     terminal.onData(data => { try { s.pty?.write(data); } catch {} });
     terminal.parser.registerOscHandler(7, value => { try { const uri = new URL(value); if (uri.protocol === 'file:') { let cwd = decodeURIComponent(uri.pathname); if (process.platform === 'win32' && !options.serverId && !options.aliasName) cwd = cwd.replace(/^\/([A-Za-z]:)/, '$1').replaceAll('/', '\\'); applyCwd(s, cwd); } } catch {} return true; });
+    terminal.parser.registerOscHandler(9, value => { if (value.startsWith('9;')) applyCwd(s, value.slice(2).replace(/^"|"$/g, '')); return true; });
     terminal.parser.registerOscHandler(1337, value => { if (value.startsWith('CurrentDir=')) applyCwd(s, value.slice(11)); return false; });
     terminal.parser.registerOscHandler(777, value => { if (value !== 'OrbitReady') return false; s.wasConnected = true; s.reconnectAttempts = 0; return true; });
     if (snapshot) terminal.write(snapshot);
@@ -92,7 +93,7 @@ async function main(directory) {
       args = shellArgs(executable, s.options.codex ? config.codexCommand : null);
       s.info.label = s.options.codex ? 'Codex' : 'Terminal';
       if (process.platform === 'win32' && !s.options.codex && /powershell|pwsh/i.test(path.basename(executable))) {
-        args = ['-NoLogo', '-NoExit', '-Command', "$global:__OrbitOriginalPrompt = (Get-Item Function:\\prompt).ScriptBlock; function global:prompt { $p = (Get-Location).ProviderPath; if ($p) { [Console]::Write([char]27 + ']7;' + ([System.Uri]$p).AbsoluteUri + [char]7) }; & $global:__OrbitOriginalPrompt }"];
+        args = ['-NoLogo', '-NoExit', '-Command', "$global:__OrbitOriginalPrompt = (Get-Item Function:\\prompt).ScriptBlock; function global:prompt { $p = (Get-Location).ProviderPath; if ($p) { [Console]::Write([char]27 + ']9;9;' + $p + [char]7) }; & $global:__OrbitOriginalPrompt }"];
       }
     }
     const environment = terminalEnv(require('../package.json').version);
