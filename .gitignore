@@ -1,0 +1,11 @@
+node_modules/
+dist/
+release/
+artifacts/
+.DS_Store
+out/
+coverage/
+*.log
+.env*
+assets/wallpaper.jpg
+assets/orbit.iconset/

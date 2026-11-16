@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' orbit: data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Orbit Terminal</title>
+  <link rel="stylesheet" href="../dist/renderer.css">
+</head>
+<body>
+  <header class="titlebar">
+    <div class="wordmark"><span class="orbit-mark"></span> orbit <span class="wordmark-sub">TERMINAL</span></div>
+    <div class="titlebar-actions"><button id="palette-button" class="command-trigger" title="Buyruqlar · ⌘K"><span data-icon="search"></span> Buyruqlar <kbd>⌘ K</kbd></button><button class="icon-button" id="settings-button" title="Sozlamalar · ⌘," aria-label="Sozlamalar"><span data-icon="settings"></span></button></div>
+  </header>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top"><div class="eyebrow">ISH MAYDONI</div><button class="workspace-button" id="choose-folder" title="Yangi sessiyalar uchun papka tanlash"><span class="workspace-symbol" data-icon="folder"></span><span><strong id="folder-name">Home</strong><small id="folder-path">~</small></span><span data-icon="chevron"></span></button></div>
+      <div class="section-label">BOSHLASH</div>
+      <button class="sidebar-action" id="new-local"><span data-icon="terminal"></span><span>Mahalliy terminal</span><kbd>⌘ T</kbd></button>
+      <button class="sidebar-action codex-launch" id="new-codex"><span data-icon="spark"></span><span>Codex</span><span class="small-tag">CLI</span></button>
+      <div class="server-heading"><span class="section-label">SERVERLAR</span><button class="icon-button small" id="add-server" title="Server qo‘shish" aria-label="Server qo‘shish"><span data-icon="plus"></span></button></div>
+      <div id="server-list" class="server-list"></div>
+      <div class="sidebar-bottom"><button id="import-ssh" class="quiet-button"><span data-icon="download"></span> SSH config’dan import</button><button id="edit-config" class="quiet-button"><span data-icon="code"></span> config.json’ni ochish<span data-icon="external"></span></button><div class="local-note"><span class="status-dot"></span> Sizning Mac’ingizda ishlaydi</div></div>
+    </aside>
+    <main class="workspace">
+      <div class="tabs-bar"><div class="tabs" id="tabs" role="tablist" aria-label="Terminal tablari"></div><button class="icon-button" id="add-tab" title="Yangi tab · ⌘T" aria-label="Yangi tab"><span data-icon="plus"></span></button><div class="tabs-spacer"></div><button class="icon-button" id="split-button" title="Panelni bo‘lish · ⌘D" aria-label="Panelni bo‘lish"><span data-icon="split"></span></button></div>
+      <div class="terminal-area" id="terminal-area"><div class="wallpaper" id="wallpaper"></div><div class="wallpaper-shade"></div><div class="workspaces" id="workspaces"></div></div>
+      <footer class="statusbar"><div><span class="status-dot" id="connection-dot"></span><span id="connection-status">Tayyor</span><span class="status-separator">/</span><span id="session-location">~</span></div><div><span id="terminal-size">—</span><span class="status-separator">·</span><span id="font-status">14 px</span><span class="status-separator">·</span><button id="status-settings">Orbit <span id="version">0.1</span></button></div></footer>
+    </main>
+  </div>
+  <dialog id="settings-dialog" class="settings-dialog">
+    <div class="dialog-header"><div><div class="eyebrow">ORBIT / PREFERENCES</div><h1>O‘zingizga moslang.</h1></div><button class="icon-button close-dialog" aria-label="Yopish"><span data-icon="close"></span></button></div>
+    <div class="settings-scroll">
+      <section><div class="setting-section-title"><h2>10 ta dizayn</h2><span>Darhol yangilanadi</span></div><div id="theme-options" class="theme-options" role="group" aria-label="Rang mavzusi"></div><label class="setting-row"><span>Yozuv o‘lchami</span><div class="range-control"><input id="font-size" type="range" min="10" max="28" step="1"><output id="font-output">14 px</output></div></label><label class="setting-row"><span>Yon panel</span><input id="sidebar-toggle" type="checkbox" class="switch"></label></section>
+      <section><div class="setting-section-title"><h2>Fon rasmi</h2><input id="wallpaper-toggle" type="checkbox" class="switch" aria-label="Fon rasmini yoqish"></div><div class="wallpaper-preview" id="wallpaper-preview"><span>YOUR OWN SPACE.</span><button id="choose-wallpaper" class="secondary-button"><span data-icon="image"></span> Rasm tanlash</button></div><label class="setting-row"><span>Rasm joylashuvi</span><select id="wallpaper-mode"><option value="contain">To‘liq sig‘dirish</option><option value="cover">Oynani to‘ldirish</option><option value="fill">Cho‘zish</option></select></label><label class="setting-row"><span>Rasm yorqinligi</span><div class="range-control"><input id="wallpaper-opacity" type="range" min="0" max="100" step="1"><output id="opacity-output"></output></div></label><label class="setting-row"><span>Qoraytirish</span><div class="range-control"><input id="wallpaper-dim" type="range" min="0" max="85" step="1"><output id="dim-output"></output></div></label></section>
+      <section><div class="setting-section-title"><h2>Klaviatura</h2><span>Qo‘llar klaviaturada</span></div><div class="shortcut-grid"><span>Yangi terminal</span><kbd>⌘ T</kbd><span>Codex</span><kbd>⌘ ⇧ N</kbd><span>Panelni bo‘lish</span><kbd>⌘ D</kbd><span>Panelni yopish</span><kbd>⌘ W</kbd><span>Buyruqlar</span><kbd>⌘ K</kbd><span>Terminalda qidirish</span><kbd>⌘ F</kbd><span>Keyingi tab</span><kbd>⌃ ⇥</kbd></div></section>
+      <section class="config-callout"><span data-icon="code"></span><div><h2>Hammasi bitta faylda.</h2><p>Shell, Codex buyrug‘i, serverlar va shrift. JSON faylni saqlasangiz, o‘zgarishlar avtomatik yuklanadi.</p><button class="text-button" id="settings-edit-config">config.json’ni ochish <span data-icon="external"></span></button></div></section>
+    </div>
+  </dialog>
+  <dialog id="server-dialog" class="server-dialog">
+    <form id="server-form"><div class="dialog-header"><div><div class="eyebrow">SSH CONNECTION</div><h1 id="server-dialog-title">Server qo‘shish</h1></div><button type="button" class="icon-button close-dialog" aria-label="Yopish"><span data-icon="close"></span></button></div>
+    <div class="server-form-fields"><label>Nomi<input name="name" placeholder="Production" maxlength="80" required></label><label>Host yoki SSH alias<input name="host" placeholder="192.168.1.10 yoki my-server" required spellcheck="false" autocomplete="off"></label><div class="form-grid"><label>Foydalanuvchi<input name="user" placeholder="root" spellcheck="false" autocomplete="off" pattern="[a-zA-Z0-9._-]*"></label><label>Port<input name="port" type="number" min="1" max="65535" value="22" required></label></div><label>SSH kaliti <span class="optional">ixtiyoriy</span><div class="file-input"><input name="identity" placeholder="~/.ssh/id_ed25519" spellcheck="false"><button type="button" class="icon-button" id="choose-key" aria-label="SSH kalitini tanlash"><span data-icon="folder"></span></button></div></label><label class="persistent-toggle"><span>Doimiy sessiya <small>tmux orqali davom ettirish</small></span><input type="checkbox" name="persistent" class="switch" checked></label><label id="session-name-field">Sessiya nomi<input name="sessionName" placeholder="Avtomatik yaratiladi" maxlength="64" pattern="[a-zA-Z0-9_-]*" spellcheck="false"></label><p class="persistence-note">Keepalive har 15 soniyada ishlaydi. tmux yoqilgan bo‘lsa, aloqa uzilganda serverdagi ish qoladi; qayta ulanish shu sessiyani ochadi. Bir profil — bir ish joyi. Serverda tmux bo‘lishi shart.</p><p class="form-note">Parol va kalit passphrase’i terminalda so‘raladi. Orbit ularni saqlamaydi. SSH alias ishlatsangiz, ~/.ssh/config sozlamalari qo‘llanadi.</p><div id="server-error" class="form-error" role="alert"></div></div>
+    <div class="dialog-footer"><button type="button" id="delete-server" class="danger-button" hidden>O‘chirish</button><span></span><button type="button" class="secondary-button close-dialog">Bekor qilish</button><button type="submit" class="primary-button">Saqlash</button></div></form>
+  </dialog>
+  <dialog id="palette-dialog" class="palette-dialog"><div class="palette-input"><span data-icon="search"></span><input id="palette-input" placeholder="Buyruq yoki server qidirish…" autocomplete="off" aria-label="Buyruq qidirish"><kbd>ESC</kbd></div><div id="palette-results"></div><div class="palette-footer"><span>↑ ↓ tanlash</span><span>↵ bajarish</span></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="../dist/renderer.js"></script>
+</body>
+</html>

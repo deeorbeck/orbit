@@ -1,0 +1,39 @@
+{
+  "name": "orbit-terminal",
+  "productName": "Orbit Terminal",
+  "version": "0.2.0",
+  "description": "An open-source desktop terminal for Codex, SSH servers and persistent workspaces",
+  "main": "src/main.cjs",
+  "private": true,
+  "license": "MIT",
+  "author": { "name": "Diyorbek Ismoilov", "url": "https://github.com/deeorbeck" },
+  "repository": { "type": "git", "url": "git+https://github.com/deeorbeck/orbit.git" },
+  "homepage": "https://github.com/deeorbeck/orbit#readme",
+  "bugs": { "url": "https://github.com/deeorbeck/orbit/issues" },
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "build": "esbuild src/renderer.js --bundle --outfile=dist/renderer.js --loader:.css=css",
+    "start": "npm run build && electron .",
+    "test": "node --test tests/*.test.cjs",
+    "postinstall": "node node_modules/electron/install.js && electron-builder install-app-deps",
+    "package": "npm run build && electron-builder --dir --publish never",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never",
+    "checksums": "node scripts/checksums.cjs",
+    "smoke": "node scripts/smoke.cjs"
+  },
+  "dependencies": {
+    "@xterm/xterm": "^6.0.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-search": "^0.16.0",
+    "node-pty": "^1.1.0"
+  },
+  "devDependencies": {
+    "electron": "^45.3.2",
+    "electron-builder": "26.18.0",
+    "esbuild": "^0.25.0",
+    "agent-browser": "latest"
+  }
+}

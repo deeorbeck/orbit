@@ -1,0 +1,63 @@
+appId: io.github.deeorbeck.orbit
+productName: Orbit Terminal
+copyright: Copyright © 2026 Diyorbek Ismoilov
+directories:
+  output: out
+  buildResources: assets
+# Keep native PTY helper executables outside an archive. Installed app sources
+# remain inspectable and editable, just like the repository.
+asar: false
+npmRebuild: true
+files:
+  - src/**/*
+  - dist/**/*
+  - assets/orbit.png
+  - assets/orbit.icns
+  - assets/wallpaper.svg
+  - LICENSE
+  - THIRD_PARTY_NOTICES.md
+  - package.json
+mac:
+  icon: assets/orbit.icns
+  category: public.app-category.developer-tools
+  minimumSystemVersion: '13.0.0'
+  identity: '-'
+  hardenedRuntime: false
+  entitlements: assets/entitlements.mac.plist
+  entitlementsInherit: assets/entitlements.mac.plist
+  artifactName: Orbit-Terminal-${version}-macos-${arch}.${ext}
+  target:
+    - dmg
+    - zip
+dmg:
+  title: Orbit Terminal
+  contents:
+    - x: 150
+      y: 170
+      type: file
+    - x: 440
+      y: 170
+      type: link
+      path: /Applications
+win:
+  icon: assets/orbit.png
+  artifactName: Orbit-Terminal-${version}-windows-${arch}-setup.${ext}
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Orbit Terminal
+  deleteAppDataOnUninstall: false
+linux:
+  icon: assets/orbit.png
+  executableName: orbit-terminal
+  category: System
+  maintainer: Diyorbek Ismoilov <deeorbeck@users.noreply.github.com>
+  artifactName: Orbit-Terminal-${version}-linux-${arch}.${ext}
+  target:
+    - AppImage
+    - deb

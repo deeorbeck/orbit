@@ -1,0 +1,12 @@
+const { spawn } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const data = fs.mkdtempSync(path.join(os.tmpdir(), 'orbit-smoke-'));
+const args = [root];
+if (process.env.CI && process.platform === 'linux') args.push('--no-sandbox');
+const child = spawn(require('electron'), args, { cwd: root, env: { ...process.env, ORBIT_TEST_DATA: data, ORBIT_SMOKE_TEST: '1' }, stdio: 'inherit' });
+const timer = setTimeout(() => { console.error('Desktop smoke test timed out.'); child.kill(); }, 45000);
+child.on('error', error => { clearTimeout(timer); console.error(error.message); process.exitCode = 1; });
+child.on('exit', code => { clearTimeout(timer); fs.rmSync(data, { recursive: true, force: true }); process.exitCode = code ?? 1; });
