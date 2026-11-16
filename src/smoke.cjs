@@ -20,7 +20,7 @@ module.exports = (win, app) => {
     let client;
     try {
       await until('!!window.__orbitWorkspaceSnapshot?.() && !!document.querySelector(".xterm-helper-textarea")');
-      await evaluate('window.__smokeExits=[];window.__smokeRemoved=[];window.orbit.onExit(e=>window.__smokeExits.push(e));window.orbit.onRemoved(e=>window.__smokeRemoved.push(e))');
+      await evaluate('window.__smokeExits=[];window.__smokeRemoved=[];window.orbit.onExit(e=>window.__smokeExits.push(e));window.orbit.onRemoved(e=>window.__smokeRemoved.push(e));true');
       const directory = app.getPath('userData'), stateFile = path.join(directory, 'smoke-state.json');
       client = await new SessionClient(directory).connect();
       if (process.env.ORBIT_SMOKE_PHASE === 'restore') {
@@ -127,12 +127,12 @@ module.exports = (win, app) => {
         await evaluate('document.querySelector("#split-button").click()');
         await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2');
         const beforeClose = await snapshot();
-        press('W', process.platform === 'darwin' ? ['meta'] : ['control', 'shift']);
+        press('w', process.platform === 'darwin' ? ['meta'] : ['control', 'shift']);
         await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 1');
         assert.equal((await snapshot()).tabs.length, 4, 'Closing one pane must retain its tab and other pane. ' + JSON.stringify({before:beforeClose,after:await snapshot(),events:await evaluate('({exits:window.__smokeExits,removed:window.__smokeRemoved})')}));
         await evaluate('document.querySelector("#split-button").click()');
         await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2');
-        press('W', process.platform === 'darwin' ? ['meta', 'shift'] : ['control', 'alt', 'shift']);
+        press('w', process.platform === 'darwin' ? ['meta', 'shift'] : ['control', 'alt', 'shift']);
         await until(async () => (await snapshot()).tabs.length === 3);
         await newDisposableTab();
         await until('document.querySelector(".pane-group:not([hidden]) .xterm-screen").innerText.trim().length > 0');

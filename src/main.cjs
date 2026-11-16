@@ -46,6 +46,7 @@ function buildWindow(state) {
     const name = inputAction({ ...input, type: 'keyDown' });
     if (!name) return;
     event.preventDefault();
+    if (process.env.ORBIT_SMOKE_TEST) console.log('ORBIT_INPUT_ACTION:', name, JSON.stringify({ key: input.key, shift: input.shift, type: input.type }));
     if (input.type === 'keyDown' && !(input.isAutoRepeat && name.startsWith('close'))) {
       if (name === 'closeWindow') win.close();
       else win.webContents.send('app:action', name);
