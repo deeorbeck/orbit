@@ -66,3 +66,5 @@ html:not([data-platform="darwin"]) .titlebar{padding-left:20px}
 .theme-dracula .codex-launch,.theme-dracula .small-tag{color:#d9b4ff}
 .theme-solarized .terminal-mount{padding-top:23px}
 @media(max-width:1000px){:root{--sidebar-width:205px}.wordmark-sub{display:none}.command-trigger{font-size:10px}.statusbar #session-location{max-width:180px}.terminal-mount{padding:16px 12px 8px}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.font-preview{margin:8px 0;padding:16px;background:var(--terminal-bg);color:var(--text);border:1px solid var(--line);border-radius:6px;line-height:1.65;overflow-x:auto;white-space:nowrap}.font-description{font-size:11px;line-height:1.5;color:var(--muted);margin:8px 0 14px}

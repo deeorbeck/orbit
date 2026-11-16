@@ -1,5 +1,12 @@
 // English message keys are also the fallback for future translations.
 const uz = {
+  "Tech / coding": "Texno / kodlash",
+  "Retro terminal": "Retro terminal",
+  "Cyber / pixel": "Kiber / piksel",
+  "Sci-fi display": "Fantastik display",
+  "Display": "Display",
+  "Display font · styled terminal text; fixed-width fonts align code more precisely.": "Display shrift · bezakli yozuv; monospace shriftlarda kod ustunlari aniqroq tekislanadi.",
+  "Monospace · aligned columns for code and terminal output.": "Monospace · kod va terminal ustunlari tekis turadi.",
   "Focus pane left": "Chapdagi panelga o‘tish",
   "Focus pane right": "O‘ngdagi panelga o‘tish",
   "Focus pane above": "Yuqoridagi panelga o‘tish",

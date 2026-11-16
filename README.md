@@ -177,3 +177,7 @@ Use the sidebar button in the top toolbar or **⌘B** on Mac / **Ctrl+Shift+B** 
 ### Pane and tab navigation
 
 Use **Option + ← / → / ↑ / ↓** to focus the pane in that direction. At the outer edge, focus stays in place. On Mac, **⌘⇧[ / ⌘⇧]** switches tabs and **⌘1–⌘9** selects a numbered tab; Windows/Linux use Ctrl in place of Command. Existing Ctrl+Tab / Ctrl+Shift+Tab shortcuts also remain available.
+
+### Futuristic font collection
+
+Settings → Terminal font includes Share Tech Mono (tech/coding), VT323 (retro), MatrixType (cyber/pixel), Asterisk Mono (sci-fi display) and Orbitron (display), alongside the ten theme fonts. The live preview shows code, ambiguous characters and box drawing. Four new fonts are monospace; Orbitron is proportional and best used as a stylistic display option. Each ships offline with its original license and a source URL / SHA-256 record in `assets/fonts/sources.json`. The first four were downloaded from 1001fonts; Orbitron came from Google Fonts.

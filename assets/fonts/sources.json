@@ -78,5 +78,50 @@
     "css": "https://fonts.googleapis.com/css2?family=Cutive%20Mono%3Awght%40400&display=swap",
     "license": "https://raw.githubusercontent.com/google/fonts/main/ofl/cutivemono/OFL.txt",
     "sha256": "68b6c6ee3cecad6525a788292c750757a6b1430572397fa822c1f8f76588bd34"
+  },
+  {
+    "family": "Share Tech Mono",
+    "file": "ShareTechMono-Regular.ttf",
+    "url": "https://www.1001fonts.com/download/share-tech-mono.zip",
+    "page": "https://www.1001fonts.com/share-tech-mono-font.html",
+    "license": "share-tech-mono-OFL.txt",
+    "licenseType": "OFL",
+    "sha256": "41f6d23db950bf78efe853da3c218443a4bae44cc3f80ecce00dad650ceae40c"
+  },
+  {
+    "family": "VT323",
+    "file": "VT323-Regular.ttf",
+    "url": "https://www.1001fonts.com/download/vt323.zip",
+    "page": "https://www.1001fonts.com/vt323-font.html",
+    "license": "vt323-OFL.txt",
+    "licenseType": "OFL",
+    "sha256": "214c2bbd6f7d1a9787413a01dccdf6134fd1ed7934e425d07c2ad32b1568979a"
+  },
+  {
+    "family": "MatrixType",
+    "file": "MatrixType-Regular.ttf",
+    "url": "https://www.1001fonts.com/download/matrixtype.zip",
+    "page": "https://www.1001fonts.com/matrixtype-font.html",
+    "license": "matrixtype-CC0.txt",
+    "licenseType": "CC0",
+    "sha256": "ced82f299c65e5f540c796c12c4db4fb4a11e3f7bc797ec9d5158f339e8b3209"
+  },
+  {
+    "family": "Asterisk Mono",
+    "file": "AsteriskMono-Regular.ttf",
+    "url": "https://www.1001fonts.com/download/asterisk-mono.zip",
+    "page": "https://www.1001fonts.com/asterisk-mono-font.html",
+    "license": "asterisk-mono-OFL.txt",
+    "licenseType": "OFL",
+    "sha256": "259344770861ffd664a6e4172c8a822879e4681ff85e0411ac05346dd30d820a"
+  },
+  {
+    "family": "Orbitron",
+    "file": "Orbitron-Regular.ttf",
+    "url": "https://fonts.gstatic.com/s/orbitron/v35/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyGy6xpg.ttf",
+    "page": "https://fonts.google.com/specimen/Orbitron",
+    "license": "Orbitron-OFL.txt",
+    "licenseType": "OFL",
+    "sha256": "59c2bc6487139f1b8c5754e0cc98ea431ab4c1c1ee142d9d2433ecabe444b59a"
   }
 ]

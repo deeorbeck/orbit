@@ -1,7 +1,7 @@
 {
   "name": "orbit-terminal",
   "productName": "Orbit Terminal",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "An open-source desktop terminal for Codex, SSH servers and persistent workspaces",
   "main": "src/main.cjs",
   "private": true,
@@ -22,7 +22,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "build": "esbuild src/renderer.js --bundle --outfile=dist/renderer.js --loader:.css=css --loader:.woff2=file --asset-names=fonts/[name]-[hash]",
+    "build": "esbuild src/renderer.js --bundle --outfile=dist/renderer.js --loader:.css=css --loader:.woff2=file --loader:.ttf=file --asset-names=fonts/[name]-[hash]",
     "start": "npm run build && electron .",
     "test": "node --test tests/*.test.cjs",
     "postinstall": "node node_modules/electron/install.js && electron-builder install-app-deps",

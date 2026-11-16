@@ -18,3 +18,5 @@ IBM Plex Mono, JetBrains Mono, Geist Mono, Space Mono, Fira Code, Source Code Pr
 Victor Mono, Roboto Mono, Inconsolata and Cutive Mono. Original OFL notices, source
 URLs and SHA-256 hashes are in `assets/fonts/`. Font binaries are unmodified;
 their own licenses apply independently of Orbit's MIT license.
+
+Additional fonts selected from 1001fonts: Share Tech Mono, VT323 and Asterisk Mono (SIL OFL 1.1); MatrixType (CC0 1.0). Orbitron is supplied from Google Fonts under SIL OFL 1.1. Original TTF binaries are bundled unchanged, with their license texts and source URLs / SHA-256 hashes in `assets/fonts/`. Orbitron is a proportional display face, offered as an optional stylistic choice.

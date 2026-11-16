@@ -1,3 +1,5 @@
+import fontCatalog from './font-catalog.cjs';
+const { extraFonts, fontOptions } = fontCatalog;
 import { t, setLanguage, translateDocument } from './i18n-dom.js';
 import { WorkspaceUI } from './workspace-ui.js';
 import './style.css';
@@ -64,6 +66,10 @@ function applyAppearance() {
   $('#wallpaper-preview').style.backgroundImage = `url("${wallpaperUrl}")`;
   document.body.style.setProperty('--ui-font', theme.uiFont || '-apple-system, BlinkMacSystemFont, sans-serif');
   workspace?.applyAppearance();
+  $('#font-preview').style.fontFamily = effectiveFont();
+  const selectedFont = extraFonts.find(font => font.fontFamily === effectiveFont());
+  $('#font-preview').style.fontSize = `${Math.max(16, config.appearance.fontSize)}px`;
+  $('#font-description').textContent = selectedFont?.monospace === false ? t('Display font · styled terminal text; fixed-width fonts align code more precisely.') : t('Monospace · aligned columns for code and terminal output.');
   $('#font-status').textContent = `${effectiveFont().split(',')[0].replaceAll('"', '')} · ${a.fontSize} px`;
   syncSettings();
   requestAnimationFrame(fitVisible);
@@ -166,8 +172,8 @@ function openProject(project) {
 function openRename(tab) { if (!tab) return; renamingTab = tab; $('#rename-name').value = tab.title; openDialog('#rename-dialog'); }
 function renderFontOptions() {
   const select = $('#font-family'); select.replaceChildren(); const auto = document.createElement('option'); auto.value = ''; auto.textContent = t("Theme font · automatic"); select.append(auto);
-  for (const t of Object.values(themes)) { const option = document.createElement('option'); option.value = t.fontFamily; option.textContent = t.fontName; select.append(option); }
-  if (config.appearance.fontFamily && !Object.values(themes).some(t => t.fontFamily === config.appearance.fontFamily)) { const option = document.createElement('option'); option.value = config.appearance.fontFamily; option.textContent = t("Custom font"); select.append(option); }
+  for (const font of fontOptions) { const option = document.createElement('option'); option.value = font.fontFamily; option.textContent = font.name + (font.style ? ' · ' + t(font.style) : ''); option.style.fontFamily = font.fontFamily; select.append(option); }
+  if (config.appearance.fontFamily && !fontOptions.some(font => font.fontFamily === config.appearance.fontFamily)) { const option = document.createElement('option'); option.value = config.appearance.fontFamily; option.textContent = t("Custom font"); select.append(option); }
   select.value = config.appearance.fontFamily;
 }
 function actions() {

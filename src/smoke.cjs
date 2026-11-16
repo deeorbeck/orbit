@@ -49,6 +49,17 @@ module.exports = (win, app) => {
           assert.equal(await evaluate(`document.body.classList.contains('theme-${id}')`), true); fonts.add(theme.fontName);
         }
         assert.equal(fonts.size, 10);
+        for (const font of require('./font-catalog.cjs').extraFonts) {
+          const loaded = await evaluate(`document.fonts.load('16px "${font.name}"').then(faces => faces.length)`);
+          assert(loaded > 0, `${font.name} must load offline from its bundled TTF.`);
+          await evaluate(`document.querySelector('#font-family').value = ${JSON.stringify(font.fontFamily)}; document.querySelector('#font-family').dispatchEvent(new Event('change'))`);
+          await until(`getComputedStyle(document.querySelector('.xterm-rows')).fontFamily.includes(${JSON.stringify(font.name)})`);
+          assert((await evaluate('document.querySelector("#font-preview").style.fontFamily')).includes(font.name));
+          assert(await evaluate(`!![...document.querySelector('#font-family').options].find(option => option.value === ${JSON.stringify(font.fontFamily)})`));
+        }
+        await evaluate('document.querySelector("#font-family").value="";document.querySelector("#font-family").dispatchEvent(new Event("change"))');
+        await until('document.querySelector("#font-family").value === ""');
+
         const projectFolder = path.join(directory, 'QA project'), childFolder = path.join(projectFolder, 'active-folder'); fs.mkdirSync(childFolder, { recursive: true });
         await evaluate('document.querySelector("#add-project").click()');
         await evaluate(`document.querySelector('#project-form').elements.name.value = 'QA project'; document.querySelector('#project-form').elements.cwd.value = ${JSON.stringify(projectFolder)}; document.querySelector('#project-form').requestSubmit()`);

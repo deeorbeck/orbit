@@ -1,3 +1,9 @@
+## Orbit Terminal 0.3.8 — futuristic font collection
+
+- Bundle Share Tech Mono, VT323, MatrixType and Asterisk Mono from 1001fonts, plus Orbitron from Google Fonts. All original license notices are included.
+- Choose among 15 fonts in Settings with a live code preview. Orbitron is labeled as a display face because it is proportional.
+- Native smoke tests load and apply each additional font offline, then verify existing workspace persistence and pane navigation.
+
 ## Orbit Terminal 0.3.7 — small-pane input and iTerm-style navigation
 
 - Includes visible input in small splits, live-bottom restoration, Option-arrow pane navigation and Command bracket / number tab shortcuts.
