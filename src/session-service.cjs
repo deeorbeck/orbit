@@ -93,7 +93,10 @@ async function main(directory) {
       args = shellArgs(executable, s.options.codex ? config.codexCommand : null);
       s.info.label = s.options.codex ? 'Codex' : 'Terminal';
       if (process.platform === 'win32' && !s.options.codex && /powershell|pwsh/i.test(path.basename(executable))) {
-        args = ['-NoLogo', '-NoExit', '-Command', "$global:__OrbitOriginalPrompt = (Get-Item Function:\\prompt).ScriptBlock; function global:prompt { $p = (Get-Location).ProviderPath; if ($p) { [Console]::Write([char]27 + ']9;9;' + $p + [char]7) }; & $global:__OrbitOriginalPrompt }"];
+        s.cwdFile = path.join(storage, `${s.info.id}.cwd`);
+        fs.writeFileSync(s.cwdFile, cwd, { mode: 0o600 });
+        const reportPath = s.cwdFile.replaceAll("'", "''");
+        args = ['-NoLogo', '-NoExit', '-Command', "$global:__OrbitCwdFile = '" + reportPath + "'; $global:__OrbitOriginalPrompt = (Get-Item Function:\\prompt).ScriptBlock; function global:prompt { $p = (Get-Location).ProviderPath; if ($p) { [System.IO.File]::WriteAllText($global:__OrbitCwdFile, $p, (New-Object System.Text.UTF8Encoding($false))); [Console]::Write([char]27 + ']9;9;' + $p + [char]7) }; & $global:__OrbitOriginalPrompt }"];
       }
     }
     const environment = terminalEnv(require('../package.json').version);
@@ -118,6 +121,7 @@ async function main(directory) {
   }
   const cwdOf = async s => {
     if (s.options.serverId || s.options.aliasName || !s.pty) return s.cwd;
+    if (process.platform === 'win32' && s.cwdFile) { try { applyCwd(s, fs.readFileSync(s.cwdFile, 'utf8')); } catch {} }
     if (process.platform === 'linux') { try { applyCwd(s, fs.readlinkSync(`/proc/${s.pty.pid}/cwd`)); } catch {} }
     if (process.platform === 'darwin') {
       await new Promise(resolve => execFile('/usr/sbin/lsof', ['-a', '-p', String(s.pty.pid), '-d', 'cwd', '-Fn'], { timeout: 2500 }, (_e, stdout) => { const line = stdout?.split('\n').find(line => line.startsWith('n/')); if (line) applyCwd(s, line.slice(1)); resolve(); }));
