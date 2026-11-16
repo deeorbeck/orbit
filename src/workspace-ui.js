@@ -181,6 +181,7 @@ export class WorkspaceUI {
       pane.info = { ...attached.info, ...pane.pendingStatus }; pane.lastSeq = attached.seq;
       if (term.cols !== attached.info.cols || term.rows !== attached.info.rows) term.resize(attached.info.cols, attached.info.rows);
       await new Promise(resolve => term.write(attached.snapshot || '', resolve));
+      term.scrollToBottom();
     }
     pane.restoring = false;
     const waiting = [...(this.earlyData.get(info.id) || []), ...pane.queue]; this.earlyData.delete(info.id); pane.queue = [];
@@ -231,7 +232,7 @@ export class WorkspaceUI {
   }
   fit() {
     const tab = this.activeTab(); if (!tab) return;
-    for (const id of leafIds(tab.layout)) { const p = this.panes.get(id); if (!p || p.mount.clientWidth < 30 || p.mount.clientHeight < 30) continue; try { p.fit.fit(); if (p.info.cols !== p.term.cols || p.info.rows !== p.term.rows) { p.info.cols = p.term.cols; p.info.rows = p.term.rows; this.api.resize(id, p.term.cols, p.term.rows); } } catch {} }
+    for (const id of leafIds(tab.layout)) { const p = this.panes.get(id); if (!p || p.mount.clientWidth < 30 || p.mount.clientHeight < 30) continue; try { const atBottom = p.term.buffer.active.viewportY >= p.term.buffer.active.baseY; p.fit.fit(); if (atBottom) p.term.scrollToBottom(); if (p.info.cols !== p.term.cols || p.info.rows !== p.term.rows) { p.info.cols = p.term.cols; p.info.rows = p.term.rows; this.api.resize(id, p.term.cols, p.term.rows); } } catch {} }
     this.updateFooter();
   }
   async newTab(options = {}) {

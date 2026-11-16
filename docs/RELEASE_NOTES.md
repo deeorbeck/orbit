@@ -1,3 +1,8 @@
+## Orbit Terminal 0.3.3 — restore the visible input position
+
+- Reattached sessions open at the live terminal bottom. Resizing follows the bottom when already there, while preserving intentional scrollback browsing.
+- Includes the small-pane geometry and Option-arrow / numbered-tab navigation fixes from 0.3.2.
+
 ## Orbit Terminal 0.3.2 — small-pane input and terminal navigation
 
 - Fix terminal geometry counting the mount padding as usable rows and columns. The bottom prompt and cursor now fit inside small nested splits.
