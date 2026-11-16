@@ -83,7 +83,7 @@ module.exports = (win, app) => {
         await until(async () => await activeId() === paneIds[2]);
         const arrow = keyCode => { win.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers: ['alt'] }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers: ['alt'] }); };
         arrow('Up');
-        await until(async () => await activeId() === paneIds[1]);
+        try { await until(async () => await activeId() === paneIds[1]); } catch (error) { throw new Error(error.message + ' navigation=' + JSON.stringify(await evaluate('({snapshot: window.__orbitWorkspaceSnapshot(), rects: [...document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane")].map(el => ({ id: el.dataset.sessionId, rect: el.getBoundingClientRect().toJSON() }))})'))); }
         arrow('Down');
         await until(async () => await activeId() === paneIds[2]);
         const config = await evaluate('window.orbit.init().then(value => value.config)');
