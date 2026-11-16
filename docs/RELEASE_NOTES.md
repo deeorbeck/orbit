@@ -1,3 +1,9 @@
+## Orbit Terminal 0.3.2 — small-pane input and terminal navigation
+
+- Fix terminal geometry counting the mount padding as usable rows and columns. The bottom prompt and cursor now fit inside small nested splits.
+- Option + arrow keys focus the pane in that direction. Command + Shift + brackets switches tabs; Command + 1–9 selects a numbered tab.
+- Exercise a 900 × 560 window, nested panes and scrolling output in the native desktop smoke test.
+
 ## Orbit Terminal 0.3.1 — English interface and sidebar control
 
 - English is now the default interface language, with Uzbek available in Settings. Language changes apply live across windows and are saved locally.

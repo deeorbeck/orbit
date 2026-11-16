@@ -1,3 +1,4 @@
+import navigation from './pane-navigation.cjs';
 import { t } from './i18n-dom.js';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -164,6 +165,13 @@ export class WorkspaceUI {
     term.onData(data => { if (pane.info.status === 'running') this.api.write(info.id, data); });
     term.onTitleChange(title => { el.title = title; });
     term.attachCustomKeyEventHandler(e => {
+      const mod = this.platform === 'darwin' ? e.metaKey : e.ctrlKey;
+      let navigate;
+      if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) navigate = () => this.movePane(e.key.slice(5).toLowerCase());
+      if (mod && e.shiftKey && !e.altKey && ['BracketLeft', 'BracketRight'].includes(e.code)) navigate = () => this.cycleTab(e.code === 'BracketRight' ? 1 : -1);
+      if (mod && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) navigate = () => this.selectTabAt(Number(e.key) - 1);
+      if (navigate) { e.preventDefault(); if (e.type === 'keydown') navigate(); return false; }
+
       if ((this.platform === 'darwin' ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'c' && term.hasSelection()) { if (e.type === 'keydown') navigator.clipboard.writeText(term.getSelection()).catch(error => this.notify(error.message)); return false; }
       return true;
     });
@@ -263,6 +271,13 @@ export class WorkspaceUI {
   }
   renameTab(tab, title) { tab.title = title.trim().slice(0, 100) || tab.title; tab.customTitle = true; this.renderTabs(); this.run(() => this.save()); }
   async newWindow() { const p = this.activePane(); const cwd = p && !p.info.serverId ? await this.api.cwd(p.id) : this.project().cwd; return this.api.newWindow({ projectId: this.activeProjectId, cwd }); }
+  movePane(direction) {
+    const ids = leafIds(this.activeTab()?.layout);
+    const rects = ids.map(id => { const r = this.panes.get(id).el.getBoundingClientRect(); return { id, left: r.left, right: r.right, top: r.top, bottom: r.bottom }; });
+    const next = navigation.adjacentPane(rects, this.activePane()?.id, direction);
+    if (next) this.focusPane(next);
+  }
+  selectTabAt(index) { const tab = this.tabs[index]; if (tab) this.selectTab(tab.id); }
   cycleTab(delta) { const i = this.tabs.findIndex(t => t.id === this.state().activeTabId); if (this.tabs.length) this.selectTab(this.tabs[(i + delta + this.tabs.length) % this.tabs.length].id); }
   cyclePane(delta) { const ids = leafIds(this.activeTab()?.layout), i = ids.indexOf(this.activePane()?.id); if (ids.length) this.focusPane(ids[(i + delta + ids.length) % ids.length]); }
   cycleProject(delta) { const i = this.projects.findIndex(p => p.id === this.activeProjectId); return this.selectProject(this.projects[(i + delta + this.projects.length) % this.projects.length].id); }

@@ -63,6 +63,29 @@ module.exports = (win, app) => {
         await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2');
         await evaluate('document.querySelector("#split-vertical-button").click()');
         await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 3');
+        // The final row must fit above the pane edge, including padding, in small splits.
+        win.setSize(900, 560);
+        const screensFit = `(() => [...document.querySelectorAll('.pane-group:not([hidden]) .terminal-pane')].every(p => { const screen = p.querySelector('.xterm-screen').getBoundingClientRect(), mount = p.querySelector('.terminal-mount'), rect = mount.getBoundingClientRect(), css = getComputedStyle(mount); return screen.height > 0 && screen.bottom <= rect.bottom - parseFloat(css.paddingBottom) + 1 && screen.right <= rect.right - parseFloat(css.paddingRight) + 1; }))()`;
+        await until(screensFit);
+        await sendCommand(process.platform === 'win32' ? "1..40 | ForEach-Object { Write-Output 'ROW' }; Write-Output 'BOTTOM'" : "i=0; while [ $i -lt 40 ]; do echo ROW; i=$((i+1)); done; echo BOTTOM");
+        try { await until('document.querySelector(".pane-group:not([hidden])").innerText.includes("BOTTOM")'); } catch (error) { throw new Error(error.message + ' visible=' + await evaluate('document.querySelector(".pane-group:not([hidden])").innerText')); }
+        assert.equal(await evaluate(screensFit), true, 'Bottom input row must stay inside the small pane.');
+        win.setSize(1320, 860);
+        await until(screensFit);
+        const paneIds = await evaluate('[...document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane")].map(el => el.dataset.sessionId)');
+        await evaluate('document.querySelector(".pane-group:not([hidden]) .terminal-pane:last-child .xterm-helper-textarea").focus()');
+        // Native menu accelerators and xterm keyboard routing must choose the same spatial pane.
+        const menu = require('electron').Menu.getApplicationMenu();
+        const sessionMenu = menu.items.find(item => item.submenu?.items.some(entry => entry.label === 'Focus pane above')).submenu;
+        const activeId = () => evaluate('window.__orbitWorkspaceSnapshot().tabs.find(t => t.id === window.__orbitWorkspaceSnapshot().activeTabId).activePaneId');
+        sessionMenu.items.find(item => item.label === 'Focus pane above').click();
+        await until(async () => await activeId() === paneIds[1]);
+        sessionMenu.items.find(item => item.label === 'Focus pane below').click();
+        await until(async () => await activeId() === paneIds[2]);
+        win.focus(); win.webContents.focus();
+        win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Up', modifiers: ['alt'] });
+        win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Up', modifiers: ['alt'] });
+        await until(async () => await activeId() === paneIds[1]);
         const config = await evaluate('window.orbit.init().then(value => value.config)');
         config.codexCommand = `node -e "console.log('CODEX_TEST_READY');setInterval(()=>{},1000)"`; config.appearance.theme = 'coding';
         await evaluate(`window.orbit.save(${JSON.stringify(config)})`);

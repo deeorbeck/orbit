@@ -173,3 +173,7 @@ Installers go in `out/`. Build on the target OS for native PTY compatibility. Se
 Orbit starts in English. Use **Settings → Language** to switch to **O‘zbekcha** without restarting or stopping sessions. The language preference is stored as `language` (`en` or `uz`) in `config.json`. User project names, SSH aliases and terminal output are never translated.
 
 Use the sidebar button in the top toolbar or **⌘B** on Mac / **Ctrl+Shift+B** on Windows and Linux to hide or reopen the entire project/server sidebar. The preference persists and terminal processes continue running. Theme fonts are available in 0.3 and newer; choose **Theme font · automatic** in Settings to follow each theme.
+
+### Pane and tab navigation
+
+Use **Option + ← / → / ↑ / ↓** to focus the pane in that direction. At the outer edge, focus stays in place. On Mac, **⌘⇧[ / ⌘⇧]** switches tabs and **⌘1–⌘9** selects a numbered tab; Windows/Linux use Ctrl in place of Command. Existing Ctrl+Tab / Ctrl+Shift+Tab shortcuts also remain available.
