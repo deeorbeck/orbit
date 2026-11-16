@@ -28,12 +28,14 @@ test('detached PTY survives its GUI parent exit with PID, variables, cwd and alt
     assert.equal(fs.realpathSync.native(currentCwd), fs.realpathSync.native(next));
     const alternate = process.platform === 'win32' ? `& '${process.execPath.replaceAll("'", "''")}' -e "eval(Buffer.from('${Buffer.from('process.stdout.write("\\x1b[?1049hALT_STATE\\x1b[3;8H"); setTimeout(()=>{},15000)').toString('base64')}','base64').toString())"` : "printf '\\033[?1049hALT_STATE\\033[3;8H'; sleep 15";
     await client.request('write', { id: original.id, data: alternate + '\r' });
-    let altSnapshot; try { await until(async () => { altSnapshot = (await client.request('attach', { id: original.id })).snapshot; return altSnapshot.includes('\x1b[?1049h'); }); } catch (error) { throw new Error(error.message + ' alternate=' + JSON.stringify(altSnapshot)); }
+    let altSnapshot; try { await until(async () => { altSnapshot = (await client.request('attach', { id: original.id })).snapshot; return altSnapshot.includes(process.platform === 'win32' ? 'ALT_STATE' : '\x1b[?1049h'); }); } catch (error) { throw new Error(error.message + ' alternate=' + JSON.stringify(altSnapshot)); }
     client.disconnect(); client = await new SessionClient(data).start();
     const restored = await client.request('attach', { id: original.id });
     assert.equal(restored.info.pid, original.pid);
     assert(restored.snapshot.includes('ALT_STATE'));
-    assert(restored.snapshot.includes('\x1b[?1049h'), 'alternate screen must be restored');
+    // ConPTY owns the alternate buffer and emits its visible contents without a 1049 mode switch.
+    if (process.platform !== 'win32') assert(restored.snapshot.includes('\x1b[?1049h'), 'alternate screen must be restored');
+    assert.equal(restored.snapshot, altSnapshot, 'visible content and cursor state must survive reattachment');
     await client.request('close', { id: original.id });
     assert.equal((await client.request('list')).length, 0);
   } finally {
