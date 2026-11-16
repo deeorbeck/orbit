@@ -135,7 +135,7 @@ app.whenReady().then(() => {
       { label: 'Next tab', accelerator: 'Ctrl+Tab', click: () => action('next') },
       { label: 'Previous tab', accelerator: 'Ctrl+Shift+Tab', click: () => action('previous') }
     ] },
-    { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut', accelerator: shortcut('X') }, { role: 'copy', accelerator: shortcut('C') }, { role: 'paste', accelerator: shortcut('V') }, { role: 'selectAll', accelerator: shortcut('A') }, { type: 'separator' }, { label: 'Find in terminal', accelerator: shortcut('F'), click: () => action('find') }] },
+    { label: 'Edit', submenu: [{ role: 'undo', accelerator: process.platform === 'darwin' ? 'Cmd+Z' : 'Ctrl+Alt+Z' }, { role: 'redo', accelerator: process.platform === 'darwin' ? 'Cmd+Shift+Z' : 'Ctrl+Alt+Shift+Z' }, { type: 'separator' }, { role: 'cut', accelerator: shortcut('X') }, { role: 'copy', accelerator: shortcut('C') }, { role: 'paste', accelerator: shortcut('V') }, { role: 'selectAll', accelerator: shortcut('A') }, { type: 'separator' }, { label: 'Find in terminal', accelerator: shortcut('F'), click: () => action('find') }] },
     { label: 'View', submenu: [{ label: 'Command palette', accelerator: shortcut('K'), click: () => action('palette') }, { label: 'Toggle sidebar', accelerator: shortcut('B'), click: () => action('sidebar') }, { role: 'togglefullscreen' }, { type: 'separator' }, { label: 'Increase font', accelerator: 'CmdOrCtrl+=', click: () => action('fontUp') }, { label: 'Decrease font', accelerator: 'CmdOrCtrl+-', click: () => action('fontDown') }] },
     { role: 'windowMenu' }
   ]));
