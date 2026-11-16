@@ -76,21 +76,16 @@ module.exports = (win, app) => {
         win.setSize(1320, 860);
         await until(screensFit);
         const paneIds = await evaluate('[...document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane")].map(el => el.dataset.sessionId)');
+        win.focus(); win.webContents.focus();
+        await until(() => win.isFocused());
         await evaluate('[...document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane")].at(-1).dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))');
-        // Native menu accelerators and xterm keyboard routing must choose the same spatial pane.
-        const menu = require('electron').Menu.getApplicationMenu();
-        const sessionMenu = menu.items.find(item => item.submenu?.items.some(entry => entry.label === 'Focus pane above')).submenu;
         const activeId = () => evaluate('window.__orbitWorkspaceSnapshot().tabs.find(t => t.id === window.__orbitWorkspaceSnapshot().activeTabId).activePaneId');
         await until(async () => await activeId() === paneIds[2]);
-        await evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
-        sessionMenu.items.find(item => item.label === 'Focus pane above').click();
+        const arrow = keyCode => { win.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers: ['alt'] }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers: ['alt'] }); };
+        arrow('Up');
         await until(async () => await activeId() === paneIds[1]);
-        sessionMenu.items.find(item => item.label === 'Focus pane below').click();
+        arrow('Down');
         await until(async () => await activeId() === paneIds[2]);
-        win.focus(); win.webContents.focus();
-        win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Up', modifiers: ['alt'] });
-        win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Up', modifiers: ['alt'] });
-        await until(async () => await activeId() === paneIds[1]);
         const config = await evaluate('window.orbit.init().then(value => value.config)');
         config.codexCommand = `node -e "console.log('CODEX_TEST_READY');setInterval(()=>{},1000)"`; config.appearance.theme = 'coding';
         await evaluate(`window.orbit.save(${JSON.stringify(config)})`);
