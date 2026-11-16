@@ -37,7 +37,7 @@ class WorkspaceStore {
   save() { atomicJSON(this.file, this.state); }
   project(id) { return this.state.projects.find(p => p.id === id); }
   upsertProject(value) {
-    if (!value || !path.isAbsolute(value.cwd) || !fs.existsSync(value.cwd) || !fs.statSync(value.cwd).isDirectory()) throw new Error('Mavjud loyiha papkasini tanlang.');
+    if (!value || !path.isAbsolute(value.cwd) || !fs.existsSync(value.cwd) || !fs.statSync(value.cwd).isDirectory()) throw new Error("Choose an existing project folder.");
     const project = { id: this.project(value.id)?.id || randomUUID(), name: String(value.name || path.basename(value.cwd)).replace(/[\x00-\x1f]/g, '').slice(0, 80), cwd: value.cwd };
     const index = this.state.projects.findIndex(p => p.id === project.id);
     if (index < 0) this.state.projects.push(project); else this.state.projects[index] = project;
@@ -50,7 +50,7 @@ class WorkspaceStore {
   }
   saveWindow(id, value) {
     const window = this.window(id);
-    if (!window) throw new Error('Ish maydoni topilmadi.');
+    if (!window) throw new Error('Workspace not found.');
     if (this.project(value.activeProjectId)) window.activeProjectId = value.activeProjectId;
     if (value.bounds && ['x', 'y', 'width', 'height'].every(k => Number.isFinite(value.bounds[k]))) window.bounds = value.bounds;
     if (value.projectId && this.project(value.projectId) && Array.isArray(value.tabs)) {

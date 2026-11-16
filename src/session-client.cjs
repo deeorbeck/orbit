@@ -66,7 +66,7 @@ class SessionClient extends EventEmitter {
       try { return await this.connect(); } catch {}
       if (childExited && i % 10 === 9) launch();
     }
-    throw new Error('Orbit session xizmatini ishga tushirib bo‘lmadi. service.log faylini tekshiring.');
+    throw new Error('Could not start the Orbit session service. Check service.log.');
   }
   request(method, args = {}) {
     if (!this.socket || this.socket.destroyed) return Promise.reject(new Error('Session service is not connected.'));

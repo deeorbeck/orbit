@@ -1,7 +1,7 @@
 # Orbit Terminal
 
 An MIT-licensed desktop terminal for **coding, Codex and persistent SSH workspaces**.
-Built with Electron, xterm.js and node-pty. The interface is currently in Uzbek.
+Built with Electron, xterm.js and node-pty. The interface defaults to English, with Uzbek available in Settings.
 
 [Download the latest release](https://github.com/deeorbeck/orbit/releases/latest) · [Report an issue](https://github.com/deeorbeck/orbit/issues) · [Contribute](CONTRIBUTING.md)
 
@@ -58,7 +58,7 @@ On Windows/Linux, normal Ctrl+C, Ctrl+D, Ctrl+W and Ctrl+Z remain available to t
 
 ## Projects, windows and keeping local work alive
 
-Add a project with its name and root folder from **LOYIHALAR +**. Every project keeps its own tabs and split layouts. Switch projects with the sidebar or project picker. The **+** in the tab bar opens a chooser for local terminal, Codex and existing server/alias connections. Keyboard users can open a local terminal directly.
+Add a project with its name and root folder from **PROJECTS +**. Every project keeps its own tabs and split layouts. Switch projects with the sidebar or project picker. The **+** in the tab bar opens a chooser for local terminal, Codex and existing server/alias connections. Keyboard users can open a local terminal directly.
 
 A new local terminal, Codex process, split, or additional Orbit window inherits the active local process’s current folder. This is queried from the real process on macOS/Linux and tracked by a prompt hook on Windows PowerShell. For a manually configured SSH/tmux profile, splitting from an existing remote pane also looks up that tmux pane’s current directory. Ordinary SSH aliases retain their own startup command/directory.
 
@@ -76,7 +76,7 @@ A keepalive is not an unbreakable connection. Network loss, laptop sleep, server
 
 New/imported profiles enable **Doimiy sessiya** (persistent session) by default. This requires **tmux on the remote server**. For example, on Ubuntu/Debian, install it there with `sudo apt install tmux`. Orbit does not install packages or change sshd settings automatically. If tmux is absent, it reports the problem instead of silently claiming persistence; disable persistent mode for ordinary SSH.
 
-Orbit creates or attaches a named tmux session per remote pane. Codex uses a separate `-codex` session. When SSH drops or a local tab closes, remote processes can keep running. Reconnect from the sidebar or click **Sessiyani davom ettirish** to reattach. Authentication/2FA still applies. Parallel tabs and panels have independent names; reconnecting the same panel attaches to its previous workspace.
+Orbit creates or attaches a named tmux session per remote pane. Codex uses a separate `-codex` session. When SSH drops or a local tab closes, remote processes can keep running. Reopen Orbit to reattach surviving sessions, or reconnect from the sidebar. Authentication/2FA still applies. Parallel tabs and panels have independent names; reconnecting the same panel attaches to its previous workspace.
 
 **Avtomatik qayta ulanish** retries a previously authenticated connection up to five times with 2/4/8/16/30-second backoff. It does not loop on an initial authentication failure. It can be stopped or disabled per profile. `Ctrl+B`, then `D` detaches tmux intentionally; `exit` ends the remote shell intentionally.
 
@@ -84,7 +84,7 @@ This does not preserve remote work through server reboot, tmux termination, OOM 
 
 ## Configuration
 
-Click **config.json’ni ochish** in the sidebar or settings. Config lives in:
+Click **Open config.json** in the sidebar or settings. Config lives in:
 
 | OS | Path |
 | --- | --- |
@@ -167,3 +167,9 @@ Installers go in `out/`. Build on the target OS for native PTY compatibility. Se
 ## License
 
 [MIT](LICENSE) — Copyright © 2026 Diyorbek Ismoilov. Dependency licenses are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+### Interface language and sidebar
+
+Orbit starts in English. Use **Settings → Language** to switch to **O‘zbekcha** without restarting or stopping sessions. The language preference is stored as `language` (`en` or `uz`) in `config.json`. User project names, SSH aliases and terminal output are never translated.
+
+Use the sidebar button in the top toolbar or **⌘B** on Mac / **Ctrl+Shift+B** on Windows and Linux to hide or reopen the entire project/server sidebar. The preference persists and terminal processes continue running. Theme fonts are available in 0.3 and newer; choose **Theme font · automatic** in Settings to follow each theme.

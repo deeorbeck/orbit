@@ -6,6 +6,7 @@ const { defaultShell } = require('./platform.cjs');
 
 const defaults = {
   version: 1,
+  language: 'en',
   appearance: { fontSize: 14, fontFamily: '', wallpaper: true, wallpaperMode: 'contain', wallpaperOpacity: 0.28, dim: 0.25, sidebar: true, theme: 'graphite' },
   shell: defaultShell(),
   startingDirectory: os.homedir(),
@@ -19,6 +20,7 @@ function normalize(raw = {}) {
   const number = (v, d, lo, hi) => typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d;
   return {
     version: 1,
+    language: raw.language === 'uz' ? 'uz' : 'en',
     appearance: {
       fontSize: number(a.fontSize, 14, 10, 28),
       fontFamily: ['SFMono-Regular, Menlo, monospace', 'SFMono-Regular, Cascadia Mono, Menlo, Consolas, monospace'].includes(a.fontFamily) ? '' : text(a.fontFamily, '', 160),
@@ -63,7 +65,7 @@ function remoteSessionCommand(server, codexCommand, context = {}) {
   const quote = value => "'" + value.replace(/'/g, "'\\''") + "'";
   if (!server.persistent) return codexCommand ? remoteCodexCommand(`exec ${codexCommand}`) : null;
   const sessionName = (server.sessionName || 'orbit').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) + (codexCommand ? '-codex' : '');
-  const missing = 'Orbit: tmux topilmadi. Sessiyani saqlash uchun serverda tmux o‘rnating (Ubuntu/Debian: sudo apt install tmux). Oddiy SSH uchun profil sozlamasidagi doimiy sessiyani o‘chiring.';
+  const missing = 'Orbit: tmux was not found. Install tmux on the server to preserve sessions (Ubuntu/Debian: sudo apt install tmux). For plain SSH, disable persistent sessions in the profile.';
   // Fail clearly instead of silently promising durability in an ordinary shell.
   const parent = typeof context.sourceSession === 'string' && /^[a-zA-Z0-9_-]+$/.test(context.sourceSession) ? context.sourceSession : null;
   const start = parent ? `orbit_start=$(tmux display-message -p -t ${quote(parent)} '#{pane_current_path}' 2>/dev/null); [ -d "$orbit_start" ] || orbit_start="$HOME"; ` : 'orbit_start="$HOME"; ';

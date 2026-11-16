@@ -1,3 +1,4 @@
+import { t } from './i18n-dom.js';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
@@ -89,7 +90,7 @@ export class WorkspaceUI {
   }
   renderProjects() {
     const p = this.project();
-    $('#folder-name').textContent = p.name; $('#folder-path').textContent = this.shortPath(p.cwd); $('#choose-folder').title = 'Loyiha tanlash · ' + p.cwd;
+    $('#folder-name').textContent = p.name; $('#folder-path').textContent = this.shortPath(p.cwd); $('#choose-folder').title = t("Choose project · ") + p.cwd;
     const list = $('#project-list'); list.replaceChildren();
     for (const project of this.projects) {
       const row = document.createElement('div'); row.className = 'project-item' + (project.id === this.activeProjectId ? ' selected' : '');
@@ -98,7 +99,7 @@ export class WorkspaceUI {
       const name = document.createElement('span'); name.textContent = project.name;
       const count = document.createElement('small'); count.textContent = String(this.states.get(project.id)?.tabs.length || this.window.projects[project.id]?.tabs.length || '');
       b.append(mark, name, count); b.onclick = () => this.run(() => this.selectProject(project.id));
-      const edit = makeButton('···', project.name + ' loyihasini tahrirlash', () => this.openProject(project), 'icon-button small project-edit'); row.append(b, edit); list.append(row);
+      const edit = makeButton('···', t('Edit project {name}', { name: project.name }), () => this.openProject(project), 'icon-button small project-edit'); row.append(b, edit); list.append(row);
     }
     document.title = `${p.name} — Orbit Terminal`;
   }
@@ -116,7 +117,7 @@ export class WorkspaceUI {
       el.append(symbol, title);
       const count = leafIds(tab.layout).length;
       if (count > 1) { const badge = document.createElement('small'); badge.className = 'pane-count'; badge.textContent = count; el.append(badge); }
-      const close = makeButton('×', tab.title + ' tabidagi sessiyalarni tugatish', event => { event.stopPropagation(); this.run(() => this.endTab(tab)); }, 'icon-button tab-close');
+      const close = makeButton('×', t('End sessions in {name}', { name: tab.title }), event => { event.stopPropagation(); this.run(() => this.endTab(tab)); }, 'icon-button tab-close');
       el.append(close); el.onclick = () => this.selectTab(tab.id); el.ondblclick = () => this.openRename(tab);
       el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') this.selectTab(tab.id); };
       root.append(el);
@@ -136,7 +137,7 @@ export class WorkspaceUI {
   }
   updateFooter() {
     const p = this.activePane();
-    $('#connection-status').textContent = p ? this.kindName(p) + (p.info.status === 'running' ? ' · faol' : p.info.status === 'reconnecting' ? ' · qayta ulanmoqda' : ' · to‘xtagan') : 'Yangi terminal oching';
+    $('#connection-status').textContent = p ? this.kindName(p) + (p.info.status === 'running' ? t(" · running") : p.info.status === 'reconnecting' ? t(" · reconnecting") : t(" · stopped")) : t("Open a new terminal");
     $('#connection-dot').style.background = !p || p.info.status === 'running' ? '#89b8a3' : '#b99b75';
     $('#session-location').textContent = p ? this.shortPath(p.info.cwd) : this.shortPath(this.project().cwd);
     $('#terminal-size').textContent = p ? `${p.term.cols} × ${p.term.rows}` : '—';
@@ -147,7 +148,7 @@ export class WorkspaceUI {
     const kind = document.createElement('span'); kind.className = 'pane-kind';
     const cwd = document.createElement('span'); cwd.className = 'pane-cwd';
     const status = document.createElement('span'); status.className = 'pane-live';
-    const end = makeButton('×', 'Bu sessiyani tugatish', () => this.run(() => this.endPane(info.id)), 'icon-button small end-pane');
+    const end = makeButton('×', t("End this session"), () => this.run(() => this.endPane(info.id)), 'icon-button small end-pane');
     header.append(kind, cwd, status, end);
     const mount = document.createElement('div'); mount.className = 'terminal-mount'; el.append(header, mount);
     tab.group.append(el);
@@ -179,19 +180,22 @@ export class WorkspaceUI {
     this.renderPane(pane); return pane;
   }
   renderPane(pane) {
+    const end = $('.end-pane', pane.el); end.title = t('End this session'); end.setAttribute('aria-label', end.title);
+    const find = $('.find-bar', pane.el);
+    if (find) { const input = $('input', find); input.placeholder = t('Search terminal'); input.setAttribute('aria-label', input.placeholder); [...find.querySelectorAll('button')].forEach((b, i) => { b.title = t(['Previous match', 'Next match', 'Close search'][i]); b.setAttribute('aria-label', b.title); }); }
     pane.kind.className = 'pane-kind ' + this.kind(pane); pane.kind.innerHTML = this.kindIcon(pane);
     const label = document.createElement('span'); label.textContent = this.kindName(pane); pane.kind.append(label);
     pane.el.dataset.kind = this.kind(pane); pane.el.dataset.sessionId = pane.id;
     pane.cwd.textContent = this.shortPath(pane.info.cwd); pane.cwd.title = pane.info.cwd;
     pane.status.textContent = pane.info.status === 'running' ? '●' : pane.info.status === 'reconnecting' ? '↻' : '○';
-    pane.status.title = pane.info.status === 'running' ? 'Jarayon fonda ham davom etadi' : 'Sessiya to‘xtagan';
+    pane.status.title = pane.info.status === 'running' ? t("Process keeps running in the background") : t("Session stopped");
     $('.exit-banner', pane.el)?.remove();
     if (['exited', 'stopped', 'reconnecting'].includes(pane.info.status)) {
       const banner = document.createElement('div'); banner.className = 'exit-banner';
-      const text = document.createElement('span'); text.textContent = pane.info.status === 'stopped' ? 'Avvalgi ekran saqlandi. Jarayon tugagan — qayta boshlash mumkin.' : pane.info.status === 'reconnecting' ? `SSH qayta ulanmoqda · ${pane.info.retryIn || ''} soniya` : `Sessiya tugadi · kod ${pane.info.exitCode ?? '—'}`;
+      const text = document.createElement('span'); text.textContent = pane.info.status === 'stopped' ? t("Previous screen restored. The process has stopped; you can restart it.") : pane.info.status === 'reconnecting' ? t('Reconnecting SSH · {seconds}s', { seconds: pane.info.retryIn || '' }) : t('Session ended · code {code}', { code: pane.info.exitCode ?? '—' });
       banner.append(text);
-      if (pane.info.status === 'reconnecting') banner.append(makeButton('To‘xtatish', 'Avtomatik qayta ulanishni to‘xtatish', () => this.run(() => this.api.cancelRetry(pane.id)), 'secondary-button'));
-      else banner.append(makeButton('Qayta boshlash', 'Sessiyani qayta boshlash', () => this.run(async () => { const info = await this.api.restart(pane.id); this.setStatus(info); }), 'secondary-button'));
+      if (pane.info.status === 'reconnecting') banner.append(makeButton(t("Stop"), t("Stop automatic reconnection"), () => this.run(() => this.api.cancelRetry(pane.id)), 'secondary-button'));
+      else banner.append(makeButton(t("Restart"), t("Restart session"), () => this.run(async () => { const info = await this.api.restart(pane.id); this.setStatus(info); }), 'secondary-button'));
       pane.el.append(banner);
     }
   }
@@ -234,7 +238,7 @@ export class WorkspaceUI {
   }
   async split(direction = 'horizontal') {
     const tab = this.activeTab(), source = this.activePane(); if (!tab || !source) return this.newTab();
-    if (leafIds(tab.layout).length >= 12) return this.notify('Bir tabda 12 tagacha panel ochiladi.');
+    if (leafIds(tab.layout).length >= 12) return this.notify(t("You can open up to 12 panes per tab."));
     const connectionId = source.info.aliasName ? `shell-alias:${source.info.aliasName}` : source.info.serverId?.startsWith('ssh-config:') ? source.info.serverId : null;
     const info = await this.api.create({ projectId: this.activeProjectId, inheritFrom: source.id, ...(connectionId ? { connectionId } : { serverId: source.info.serverId || null }), codex: !!source.info.codex });
     this.ownedIds.add(info.id);
@@ -266,9 +270,9 @@ export class WorkspaceUI {
   find() {
     const p = this.activePane(); if (!p) return;
     if ($('.find-bar', p.el)) return $('.find-bar input', p.el).focus();
-    const bar = document.createElement('div'); bar.className = 'find-bar'; const input = document.createElement('input'); input.placeholder = 'Terminalda qidirish'; input.setAttribute('aria-label', 'Terminalda qidirish');
+    const bar = document.createElement('div'); bar.className = 'find-bar'; const input = document.createElement('input'); input.placeholder = t("Search terminal"); input.setAttribute('aria-label', t("Search terminal"));
     const search = reverse => { const found = reverse ? p.search.findPrevious(input.value) : p.search.findNext(input.value); input.style.color = input.value && !found ? '#e49794' : ''; };
     input.oninput = () => search(false); input.onkeydown = e => { if (e.key === 'Enter') search(e.shiftKey); if (e.key === 'Escape') { bar.remove(); p.term.focus(); } };
-    bar.append(input, makeButton('↑', 'Oldingi natija', () => search(true)), makeButton('↓', 'Keyingi natija', () => search(false)), makeButton('×', 'Qidiruvni yopish', () => { bar.remove(); p.term.focus(); })); p.el.append(bar); input.focus();
+    bar.append(input, makeButton('↑', t("Previous match"), () => search(true)), makeButton('↓', t("Next match"), () => search(false)), makeButton('×', t("Close search"), () => { bar.remove(); p.term.focus(); })); p.el.append(bar); input.focus();
   }
 }

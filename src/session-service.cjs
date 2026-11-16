@@ -70,7 +70,7 @@ async function main(directory) {
     const config = normalize(s.options.config);
     let executable, args;
     const cwd = s.options.cwd || config.startingDirectory;
-    if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) throw new Error(`Papka mavjud emas: ${cwd}`);
+    if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) throw new Error(`Folder does not exist: ${cwd}`);
     if (s.options.aliasName) {
       if (!/^[a-zA-Z_][a-zA-Z0-9_.-]*$/.test(s.options.aliasName)) throw new Error('Invalid SSH alias name.');
       executable = config.shell; args = ['-l', '-i', '-c', s.options.aliasName];
@@ -78,7 +78,7 @@ async function main(directory) {
       s.info.persistent = false; s.info.autoReconnect = false;
     } else if (s.options.serverId) {
       const server = config.servers.find(server => server.id === s.options.serverId);
-      if (!server) throw new Error('Server profili topilmadi.');
+      if (!server) throw new Error("Server profile not found.");
       const baseName = s.options.remoteSession || `${server.sessionName}-${s.info.id.slice(0, 8)}`;
       s.options.remoteSession = baseName;
       executable = sshExecutable(); args = sshArgs(server);
@@ -89,7 +89,7 @@ async function main(directory) {
       s.info.label = s.options.codex ? `Codex · ${server.name}` : server.name;
     } else {
       executable = config.shell;
-      if (!path.isAbsolute(executable) || !fs.existsSync(executable)) throw new Error('config.json ichida mavjud shell yo‘lini tanlang.');
+      if (!path.isAbsolute(executable) || !fs.existsSync(executable)) throw new Error("Set a valid shell path in config.json.");
       args = shellArgs(executable, s.options.codex ? config.codexCommand : null);
       s.info.label = s.options.codex ? 'Codex' : 'Terminal';
       if (process.platform === 'win32' && !s.options.codex && /powershell|pwsh/i.test(path.basename(executable))) {
@@ -132,7 +132,7 @@ async function main(directory) {
     list: () => [...sessions.values()].map(info),
     create: ({ id, options }) => {
       if (!/^[a-f0-9-]{36}$/.test(id) || sessions.has(id)) throw new Error('Invalid session id.');
-      if ([...sessions.values()].filter(s => s.status === 'running').length >= 64) throw new Error('Bir vaqtning o‘zida 64 tagacha sessiya ishlashi mumkin.');
+      if ([...sessions.values()].filter(s => s.status === 'running').length >= 64) throw new Error("Up to 64 sessions can run at the same time.");
       const s = makeRecord({ id, projectId: options.projectId, windowId: options.windowId, serverId: options.serverId || null, codex: !!options.codex, cwd: options.serverId || options.aliasName ? '~' : options.cwd, label: 'Terminal', cols: 100, rows: 30 }, options);
       try { spawnSession(s); } catch (error) { sessions.delete(id); s.terminal.dispose(); throw error; }
       return info(s);
@@ -152,8 +152,8 @@ async function main(directory) {
       s.terminal.resize(cols, rows); try { s.pty?.resize(cols, rows); } catch {} schedulePersist(s);
     },
     restart: ({ id, config }) => {
-      const s = sessions.get(id); if (!s) throw new Error('Sessiya topilmadi.');
-      if (s.pty) throw new Error('Sessiya hali ishlayapti.');
+      const s = sessions.get(id); if (!s) throw new Error("Session not found.");
+      if (s.pty) throw new Error("The session is still running.");
       s.options.config = config; if (!s.options.serverId && fs.existsSync(s.cwd)) s.options.cwd = s.cwd;
       s.reconnectAttempts = 0; s.wasConnected = false; spawnSession(s); return info(s);
     },

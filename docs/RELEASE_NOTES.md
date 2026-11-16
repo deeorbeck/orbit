@@ -1,4 +1,11 @@
-## Orbit Terminal 0.3.0 — project workspaces and surviving GUI exit
+## Orbit Terminal 0.3.1 — English interface and sidebar control
+
+- English is now the default interface language, with Uzbek available in Settings. Language changes apply live across windows and are saved locally.
+- Menus, settings, dialogs, commands, session status and accessibility labels use the selected language. Project names, aliases and terminal output stay untouched.
+- A toolbar button hides or reopens the entire left sidebar. The existing keyboard shortcut and saved preference use the same action.
+- Theme fonts require 0.3 or newer; legacy default system font settings migrate to automatic theme fonts.
+
+### Also included from 0.3.0
 
 - Multiple projects, each with shell, Codex and SSH tabs.
 - Nested side-by-side and top/bottom splits, up to 12 panes per tab, plus additional native Orbit windows.
@@ -20,4 +27,4 @@
 
 Closing Orbit now keeps local processes running. End a pane explicitly or use **Barcha sessiyalarni tugatib chiqish** to stop them. A reboot/logout/service crash still ends local processes; stopped sessions show their saved screen and require an explicit restart. Private bounded screen snapshots are stored locally. Sessions opened by 0.2 cannot be transferred into the new service; persistence begins with sessions opened by 0.3.
 
-Remote tmux protection still requires tmux on the server. Ordinary discovered aliases run exactly as configured, without automatic tmux injection. Codex is installed/authenticated separately. UI language is Uzbek. Mac builds are ad-hoc signed without Apple notarization; Windows installers have no commercial signing certificate. Source code is MIT licensed; bundled fonts carry their own OFL notices.
+Remote tmux protection still requires tmux on the server. Ordinary discovered aliases run exactly as configured, without automatic tmux injection. Codex is installed/authenticated separately. The UI defaults to English, with Uzbek available in Settings. Mac builds are ad-hoc signed without Apple notarization; Windows installers have no commercial signing certificate. Source code is MIT licensed; bundled fonts carry their own OFL notices.

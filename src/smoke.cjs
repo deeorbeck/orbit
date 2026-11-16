@@ -55,7 +55,7 @@ module.exports = (win, app) => {
         const command = process.platform === 'win32' ? `$global:ORBIT_KEEP='kept'; Set-Location -LiteralPath '${childFolder.replaceAll("'", "''")}'; Write-Output ('DESKTOP_STATE:'+$global:ORBIT_KEEP)` : `export ORBIT_KEEP=kept; cd '${childFolder.replaceAll("'", "'\\''")}'; printf '\\nDESKTOP_STATE:%s\\n' "$ORBIT_KEEP"`;
         await sendCommand(command);
         await until(async () => (await client.request('attach', { id: originalId })).snapshot.includes('DESKTOP_STATE:kept'));
-        await evaluate('document.querySelector("#add-tab").click(); [...document.querySelectorAll(".palette-result")].find(el => el.textContent.includes("Mahalliy terminal")).click()');
+        await evaluate('document.querySelector("#add-tab").click(); [...document.querySelectorAll(".palette-result")].find(el => el.textContent.includes("Local terminal")).click()');
         await until('document.querySelectorAll("[role=tab]").length === 2');
         const cloneId = await evaluate('document.querySelector(".pane-group:not([hidden]) .terminal-pane").dataset.sessionId');
         assert.equal(fs.realpathSync.native(await client.request('cwd', { id: cloneId })), fs.realpathSync.native(childFolder), 'New terminal must inherit the active shell cwd.');
