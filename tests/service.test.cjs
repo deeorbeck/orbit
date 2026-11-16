@@ -24,8 +24,8 @@ test('detached PTY survives its GUI parent exit with PID, variables, cwd and alt
     const command = process.platform === 'win32' ? `Set-Location -LiteralPath '${next.replaceAll("'", "''")}'; Write-Output ('RESTORED:'+$global:ORBIT_KEEP)` : `cd '${next.replaceAll("'", "'\\''")}'; printf '\\nRESTORED:%s\\n' "$ORBIT_KEEP"`;
     await client.request('write', { id: original.id, data: command + '\r' });
     await until(async () => (await client.request('attach', { id: original.id })).snapshot.includes('RESTORED:kept'));
-    let currentCwd; try { currentCwd = await until(async () => { const value = await client.request('cwd', { id: original.id }); return value && fs.realpathSync(value) === fs.realpathSync(next) && value; }); } catch (error) { throw new Error(error.message + ' cwd=' + await client.request('cwd', { id: original.id }) + ' snapshot=' + JSON.stringify((await client.request('attach', { id: original.id })).snapshot)); }
-    assert.equal(fs.realpathSync(currentCwd), fs.realpathSync(next));
+    let currentCwd; try { currentCwd = await until(async () => { const value = await client.request('cwd', { id: original.id }); return value && fs.realpathSync.native(value) === fs.realpathSync.native(next) && value; }); } catch (error) { throw new Error(error.message + ' cwd=' + await client.request('cwd', { id: original.id }) + ' snapshot=' + JSON.stringify((await client.request('attach', { id: original.id })).snapshot)); }
+    assert.equal(fs.realpathSync.native(currentCwd), fs.realpathSync.native(next));
     const alternate = process.platform === 'win32' ? "[Console]::Write([char]27+'[?1049hALT_STATE'+[char]27+'[3;8H'); Start-Sleep -Seconds 15" : "printf '\\033[?1049hALT_STATE\\033[3;8H'; sleep 15";
     await client.request('write', { id: original.id, data: alternate + '\r' });
     await until(async () => (await client.request('attach', { id: original.id })).snapshot.includes('\x1b[?1049h'));
@@ -38,7 +38,7 @@ test('detached PTY survives its GUI parent exit with PID, variables, cwd and alt
     assert.equal((await client.request('list')).length, 0);
   } finally {
     if (client) { try { await client.request('shutdown'); } catch {} client.disconnect(); }
-    await delay(150); fs.rmSync(root, { recursive: true, force: true });
+    await delay(150); fs.rmSync(root, { recursive: true, force: true, maxRetries: 30, retryDelay: 100 });
   }
 });
 test('service rejects connections without the private per-user token', { timeout: 15000 }, async () => {
@@ -54,7 +54,7 @@ test('service rejects connections without the private per-user token', { timeout
     });
     assert(rejected);
     if (process.platform !== 'win32') assert.equal(fs.statSync(path.join(data, 'service.token')).mode & 0o777, 0o600);
-  } finally { await client.request('shutdown'); client.disconnect(); await delay(100); fs.rmSync(data, { recursive: true, force: true }); }
+  } finally { await client.request('shutdown'); client.disconnect(); await delay(100); fs.rmSync(data, { recursive: true, force: true, maxRetries: 30, retryDelay: 100 }); }
 });
 test('a stopped service restores a private screen snapshot without pretending its old process is alive', { timeout: 20000 }, async () => {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'orbit-cold-'));
@@ -75,5 +75,5 @@ test('a stopped service restores a private screen snapshot without pretending it
     assert(recovered.snapshot.includes('SCREEN:orbit-🌗-o‘zbek'));
     const restarted = await client.request('restart', { id, config });
     assert.equal(restarted.status, 'running'); assert.notEqual(restarted.pid, original.pid);
-  } finally { try { await client.request('shutdown'); } catch {} client.disconnect(); await delay(200); fs.rmSync(data, { recursive: true, force: true }); }
+  } finally { try { await client.request('shutdown'); } catch {} client.disconnect(); await delay(200); fs.rmSync(data, { recursive: true, force: true, maxRetries: 30, retryDelay: 100 }); }
 });

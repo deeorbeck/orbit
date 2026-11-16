@@ -34,7 +34,7 @@ module.exports = (win, app) => {
         const command = process.platform === 'win32' ? "Write-Output ('AFTER_GUI:'+$global:ORBIT_KEEP)" : "printf '\\nAFTER_GUI:%s\\n' \"$ORBIT_KEEP\"";
         await client.request('write', { id: expected.originalId, data: command + '\r' });
         await until(async () => (await client.request('attach', { id: expected.originalId })).snapshot.includes('AFTER_GUI:kept'));
-        assert.equal(fs.realpathSync(await client.request('cwd', { id: expected.originalId })), fs.realpathSync(expected.childFolder));
+        assert.equal(fs.realpathSync.native(await client.request('cwd', { id: expected.originalId })), fs.realpathSync.native(expected.childFolder));
         console.log('ORBIT_RESTORE_PASS: same PIDs, variables, cwd, projects, tabs, nested splits and two native windows after complete GUI exit');
       } else {
         await until('document.querySelector(".xterm-screen").innerText.trim().length > 0');
@@ -58,7 +58,7 @@ module.exports = (win, app) => {
         await evaluate('document.querySelector("#add-tab").click(); [...document.querySelectorAll(".palette-result")].find(el => el.textContent.includes("Mahalliy terminal")).click()');
         await until('document.querySelectorAll("[role=tab]").length === 2');
         const cloneId = await evaluate('document.querySelector(".pane-group:not([hidden]) .terminal-pane").dataset.sessionId');
-        assert.equal(fs.realpathSync(await client.request('cwd', { id: cloneId })), fs.realpathSync(childFolder), 'New terminal must inherit the active shell cwd.');
+        assert.equal(fs.realpathSync.native(await client.request('cwd', { id: cloneId })), fs.realpathSync.native(childFolder), 'New terminal must inherit the active shell cwd.');
         await evaluate('document.querySelector("#split-button").click()');
         await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2');
         await evaluate('document.querySelector("#split-vertical-button").click()');
