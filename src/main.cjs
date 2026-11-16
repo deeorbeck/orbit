@@ -138,6 +138,7 @@ else {
     safeHandle('terminal:cancelRetry', (_win, id) => backend.request('cancelRetry', { id }));
     safeHandle('terminal:close', async (win, ids) => {
       ids = Array.isArray(ids) ? ids : [ids];
+      if (process.env.ORBIT_SMOKE_TEST) console.log('ORBIT_CLOSE_REQUEST:', JSON.stringify(ids));
       const living = (await backend.request('list')).filter(s => ids.includes(s.id) && ['running', 'reconnecting'].includes(s.status));
       if (living.length && !process.env.ORBIT_TEST_DATA) {
         const result = await dialog.showMessageBox(win, { type: 'question', buttons: [tr("Cancel"), tr("End session")], defaultId: 0, cancelId: 0, message: tr('End {count} sessions?', { count: living.length }), detail: tr("Local processes in these panes will stop. Closing only the window keeps sessions running.") });
