@@ -12,8 +12,8 @@ Built with Electron, xterm.js and node-pty. The interface is currently in Uzbek.
 | Windows 10/11 x64 | `Orbit-Terminal-*-windows-x64-setup.exe` | Run the guided installer |
 | macOS Apple Silicon | `Orbit-Terminal-*-macos-arm64.dmg` | Drag Orbit Terminal to Applications |
 | macOS Intel | `Orbit-Terminal-*-macos-x64.dmg` | Drag Orbit Terminal to Applications |
-| Linux x64 | `Orbit-Terminal-*-linux-x64.AppImage` | Make executable and run |
-| Debian / Ubuntu x64 | `Orbit-Terminal-*-linux-x64.deb` | `sudo apt install ./Orbit-Terminal-*.deb` |
+| Linux x64 | `Orbit-Terminal-*-linux-x86_64.AppImage` | Make executable and run |
+| Debian / Ubuntu x64 | `Orbit-Terminal-*-linux-amd64.deb` | `sudo apt install ./Orbit-Terminal-*.deb` |
 
 Installers and SHA-256 checksums are published on the [Releases page](https://github.com/deeorbeck/orbit/releases). Linux AppImage may require FUSE; the `.deb` is an alternative on Debian-based systems. Mac builds target macOS 13+.
 
