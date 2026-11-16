@@ -1,4 +1,4 @@
-## Orbit Terminal 0.2.0
+## Orbit Terminal 0.2.1
 
 Open-source terminal for coding, Codex and persistent SSH workspaces.
 
@@ -8,6 +8,7 @@ Open-source terminal for coding, Codex and persistent SSH workspaces.
 - Custom wallpapers with fit/fill/stretch and live brightness controls.
 - SSH profiles, key selection, SSH config import and editable live JSON configuration.
 - 15-second SSH keepalives, named remote tmux sessions, and bounded automatic reconnection after an established connection drops.
+- Cross-platform desktop tests wait for shell readiness and completed text insertion before submitting commands.
 
 ### Download
 

@@ -12,13 +12,16 @@ module.exports = (win, app) => {
   win.webContents.once('did-finish-load', async () => {
     try {
       await until('!!document.querySelector(".xterm-helper-textarea")');
+      await until('document.querySelector(".xterm-screen").innerText.trim().length > 0');
       assert.equal(await evaluate('document.querySelectorAll("[data-theme]").length'), 10);
       for (const theme of ['graphite', 'coding', 'modern', 'futuristic', 'midnight', 'warm', 'dracula', 'nord', 'solarized', 'paper']) {
         await evaluate(`document.querySelector('[data-theme="${theme}"]').click()`);
         assert.equal(await evaluate(`document.body.classList.contains('theme-${theme}')`), true);
       }
+      win.webContents.focus();
       await evaluate('document.querySelector(".xterm-helper-textarea").focus()');
-      win.webContents.insertText(process.platform === 'win32' ? "Write-Output 'ORBIT_SMOKE_OK'" : "printf '\\nORBIT_SMOKE_OK\\n'");
+      // insertText is asynchronous: Enter must follow the completed insertion.
+      await win.webContents.insertText(process.platform === 'win32' ? "Write-Output 'ORBIT_SMOKE_OK'" : "printf '\\nORBIT_SMOKE_OK\\n'");
       win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
       win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
       await until('document.querySelector(".xterm-screen").innerText.split("\\n").some(line => line.trim() === "ORBIT_SMOKE_OK")');
@@ -35,6 +38,9 @@ module.exports = (win, app) => {
       app.quit();
     } catch (error) {
       console.error('ORBIT_SMOKE_FAIL:', error.stack);
+      if (process.env.CI) {
+        console.error('ORBIT_SMOKE_STATE:', await evaluate('JSON.stringify({focus:document.activeElement?.className,terminal:document.querySelector(".xterm-screen")?.innerText.slice(-1500),error:document.querySelector("#toast")?.textContent})').catch(() => 'Renderer unavailable'));
+      }
       app.exit(1);
     }
   });

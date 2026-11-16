@@ -1,16 +1,26 @@
 {
   "name": "orbit-terminal",
   "productName": "Orbit Terminal",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "An open-source desktop terminal for Codex, SSH servers and persistent workspaces",
   "main": "src/main.cjs",
   "private": true,
   "license": "MIT",
-  "author": { "name": "Diyorbek Ismoilov", "url": "https://github.com/deeorbeck" },
-  "repository": { "type": "git", "url": "git+https://github.com/deeorbeck/orbit.git" },
+  "author": {
+    "name": "Diyorbek Ismoilov",
+    "url": "https://github.com/deeorbeck"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deeorbeck/orbit.git"
+  },
   "homepage": "https://github.com/deeorbeck/orbit#readme",
-  "bugs": { "url": "https://github.com/deeorbeck/orbit/issues" },
-  "engines": { "node": ">=24" },
+  "bugs": {
+    "url": "https://github.com/deeorbeck/orbit/issues"
+  },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "build": "esbuild src/renderer.js --bundle --outfile=dist/renderer.js --loader:.css=css",
     "start": "npm run build && electron .",
