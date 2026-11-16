@@ -181,3 +181,9 @@ Use **Option + ← / → / ↑ / ↓** to focus the pane in that direction. At t
 ### Futuristic font collection
 
 Settings → Terminal font includes Share Tech Mono (tech/coding), VT323 (retro), MatrixType (cyber/pixel), Asterisk Mono (sci-fi display) and Orbitron (display), alongside the ten theme fonts. The live preview shows code, ambiguous characters and box drawing. Four new fonts are monospace; Orbitron is proportional and best used as a stylistic display option. Each ships offline with its original license and a source URL / SHA-256 record in `assets/fonts/sources.json`. The first four were downloaded from 1001fonts; Orbitron came from Google Fonts.
+
+### Closing a pane or tab
+
+**⌘W** on Mac / **Ctrl+Shift+W** on Windows and Linux ends only the active pane. **⌘⇧W** / **Ctrl+Alt+Shift+W** ends the current tab and its panes. Live processes require confirmation. A local shell closes its pane on exit, even when its last command returned an error. Successful Codex/SSH exits also close their pane; failed Codex/SSH sessions retain their screen and restart action. **⌘Q** quits the GUI while preserving sessions. Closing a native window without ending its sessions uses **⌘⌥⇧W** / **Ctrl+Alt+W**.
+
+**Ctrl+Tab** and **Ctrl+Shift+Tab** work repeatedly while the terminal input has focus; these key events are intercepted before reaching the PTY. Ordinary Tab, Ctrl+C, Ctrl+D, Ctrl+W and Ctrl+Z retain their shell behavior.

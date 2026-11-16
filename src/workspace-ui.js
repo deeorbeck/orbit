@@ -24,7 +24,7 @@ export class WorkspaceUI {
     this.ownedIds = new Set(initial.sessions.filter(s => s.windowId === this.window.id).map(s => s.id));
     api.onData(event => this.handleData(event));
     api.onCwd(event => { const p = this.panes.get(event.id); if (p) { p.info.cwd = event.cwd; this.renderPane(p); this.updateFooter(); } });
-    api.onExit(event => this.setStatus(event)); api.onStatus(event => this.setStatus(event));
+    api.onExit(event => { this.setStatus(event); if (event.status === 'exited' && (event.exitCode === 0 || (!event.serverId && !event.codex))) this.run(() => this.endPane(event.id)); }); api.onStatus(event => this.setStatus(event));
     api.onRemoved(({ id }) => { if (this.panes.has(id)) this.removeLocal([id]); });
     api.onProjects(projects => { this.projects = projects; this.renderProjects(); });
     new ResizeObserver(() => requestAnimationFrame(() => this.fit())).observe($('#terminal-area'));
@@ -118,7 +118,7 @@ export class WorkspaceUI {
       el.append(symbol, title);
       const count = leafIds(tab.layout).length;
       if (count > 1) { const badge = document.createElement('small'); badge.className = 'pane-count'; badge.textContent = count; el.append(badge); }
-      const close = makeButton('×', t('End sessions in {name}', { name: tab.title }), event => { event.stopPropagation(); this.run(() => this.endTab(tab)); }, 'icon-button tab-close');
+      const close = makeButton('×', t('End sessions in {name}', { name: tab.title }) + ' · ' + (this.platform === 'darwin' ? '⌘⇧W' : 'Ctrl+Alt+Shift+W'), event => { event.stopPropagation(); this.run(() => this.endTab(tab)); }, 'icon-button tab-close');
       el.append(close); el.onclick = () => this.selectTab(tab.id); el.ondblclick = () => this.openRename(tab);
       el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') this.selectTab(tab.id); };
       root.append(el);
@@ -175,6 +175,7 @@ export class WorkspaceUI {
       if ((this.platform === 'darwin' ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === 'c' && term.hasSelection()) { if (e.type === 'keydown') navigator.clipboard.writeText(term.getSelection()).catch(error => this.notify(error.message)); return false; }
       return true;
     });
+    mount.addEventListener('focusin', () => { if (this.activePane()?.id !== info.id && this.activeProjectId === tab.projectId) this.focusPane(info.id); });
     el.addEventListener('pointerdown', e => { if (!e.target.closest('button,.find-bar')) this.focusPane(info.id); });
     const attached = restored || await this.api.attach(info.id);
     if (attached) {
@@ -189,7 +190,7 @@ export class WorkspaceUI {
     this.renderPane(pane); return pane;
   }
   renderPane(pane) {
-    const end = $('.end-pane', pane.el); end.title = t('End this session'); end.setAttribute('aria-label', end.title);
+    const end = $('.end-pane', pane.el); end.title = t('End this session') + ' · ' + (this.platform === 'darwin' ? '⌘W' : 'Ctrl+Shift+W'); end.setAttribute('aria-label', end.title);
     const find = $('.find-bar', pane.el);
     if (find) { const input = $('input', find); input.placeholder = t('Search terminal'); input.setAttribute('aria-label', input.placeholder); [...find.querySelectorAll('button')].forEach((b, i) => { b.title = t(['Previous match', 'Next match', 'Close search'][i]); b.setAttribute('aria-label', b.title); }); }
     pane.kind.className = 'pane-kind ' + this.kind(pane); pane.kind.innerHTML = this.kindIcon(pane);
@@ -255,7 +256,7 @@ export class WorkspaceUI {
     tab.layout = replaceLeaf(tab.layout, source.id, { type: 'split', direction, ratio: 0.5, first: { type: 'leaf', sessionId: source.id }, second: { type: 'leaf', sessionId: info.id } });
     tab.activePaneId = info.id; this.layout(tab); this.renderTabs(); this.focusActive(); await this.save(tab.projectId);
   }
-  async endPane(id) { if (await this.api.close(id)) this.removeLocal([id]); }
+  async endPane(id) { if (!id) return; if (await this.api.close(id)) this.removeLocal([id]); }
   async endTab(tab) { const ids = leafIds(tab.layout); if (await this.api.close(ids)) this.removeLocal(ids); }
   removeLocal(ids) {
     const changed = new Set();

@@ -182,7 +182,7 @@ function actions() {
   if (connectionsOnly) return [{ name: t("Local terminal"), icon: 'terminal', run: () => newTab() }, { name: 'Codex', icon: 'spark', run: () => newTab({ codex: true }) }, ...connectionActions, { name: t("Add a new server"), icon: 'plus', run: () => openServer() }];
   if (projectFilter) return [...projectActions, { name: t("Add a new project"), icon: 'plus', run: () => openProject() }];
   return [
-    ...['new', 'codex', 'newWindow', 'split', 'splitVertical', 'projects', 'addProject', 'rename', 'sidebar', 'settings'].map(id => ({ name: t(shortcutMap[id]?.label || id), icon: id === 'codex' ? 'spark' : id === 'newWindow' ? 'external' : id.toLowerCase().includes('project') ? 'folder' : id.startsWith('split') ? 'split' : 'terminal', key: shortcutMap[id]?.key, run: () => handleAction(id) })),
+    ...['new', 'codex', 'newWindow', 'split', 'splitVertical', 'projects', 'addProject', 'rename', 'close', 'closeTab', 'sidebar', 'settings'].map(id => ({ name: t(shortcutMap[id]?.label || id), icon: id === 'codex' ? 'spark' : id === 'newWindow' ? 'external' : id.toLowerCase().includes('project') ? 'folder' : id.startsWith('split') ? 'split' : 'terminal', key: shortcutMap[id]?.key, run: () => handleAction(id) })),
     ...projectActions,
     ...savedConnections.map(s => ({ name: s.name + ' · ' + s.source, icon: 'server', run: () => newTab({ connectionId: s.id }) })),
     { name: t("Add server"), icon: 'server', run: () => openServer() },
@@ -212,7 +212,7 @@ async function importSSH() {
 function handleAction(name) {
   const handlers = {
     new: () => newTab(), connections: openConnections, codex: () => newTab({ codex: true }), split: () => split('horizontal'), splitVertical: () => split('vertical'),
-    close: () => workspace.endPane(activePane()?.id), settings: () => openDialog('#settings-dialog'), palette: () => openPalette(false),
+    close: () => workspace.endPane(activePane()?.id), closeTab: () => activeTab() && workspace.endTab(activeTab()), settings: () => openDialog('#settings-dialog'), palette: () => openPalette(false),
     projects: () => openPalette(true), addProject: () => openProject(), newWindow: () => workspace.newWindow(),
     paneLeft: () => workspace.movePane('left'), paneRight: () => workspace.movePane('right'), paneUp: () => workspace.movePane('up'), paneDown: () => workspace.movePane('down'),
     previousTabBracket: () => workspace.cycleTab(-1), nextTabBracket: () => workspace.cycleTab(1),

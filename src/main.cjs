@@ -1,3 +1,4 @@
+const { inputAction } = require('./input-shortcuts.cjs');
 const { translate } = require('./i18n.cjs');
 const tr = (message, values) => translate(config?.language, message, values);
 const { app, BrowserWindow, ipcMain, Menu, dialog, shell, protocol, net, screen } = require('electron');
@@ -40,6 +41,16 @@ function buildWindow(state) {
   const positionValid = Number.isFinite(bounds.x) && Number.isFinite(bounds.y) && screen.getAllDisplays().some(d => bounds.x >= d.bounds.x - 100 && bounds.x < d.bounds.x + d.bounds.width && bounds.y >= d.bounds.y - 50 && bounds.y < d.bounds.y + d.bounds.height);
   const win = new BrowserWindow({ width: Math.max(740, Math.min(2400, bounds.width || 1320)), height: Math.max(480, Math.min(1600, bounds.height || 860)), ...(positionValid ? { x: bounds.x, y: bounds.y } : {}), minWidth: 740, minHeight: 480, title: 'Orbit Terminal', backgroundColor: '#111519', icon: path.join(__dirname, '..', 'assets', 'orbit.png'), ...chrome, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false } });
   windows.set(state.id, win);
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown' && input.type !== 'keyUp') return;
+    const name = inputAction({ ...input, type: 'keyDown' });
+    if (!name) return;
+    event.preventDefault();
+    if (input.type === 'keyDown' && !(input.isAutoRepeat && name.startsWith('close'))) {
+      if (name === 'closeWindow') win.close();
+      else win.webContents.send('app:action', name);
+    }
+  });
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', event => event.preventDefault());
   win.loadFile(path.join(__dirname, 'index.html'));
@@ -161,7 +172,7 @@ else {
     const rebuildMenu = () => Menu.setApplicationMenu(Menu.buildFromTemplate([
       { label: 'Orbit Terminal', submenu: [{ role: 'about' }, entry('settings'), { type: 'separator' }, ...(process.platform === 'darwin' ? [{ role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }] : []), { label: tr("Quit Orbit · keep sessions"), accelerator: 'CmdOrCtrl+Q', click: () => app.quit() }, { label: tr("End all sessions and quit…"), click: async () => { const result = await dialog.showMessageBox(activeWindow(), { type: 'warning', buttons: [tr("Cancel"), tr("End all sessions")], defaultId: 0, cancelId: 0, message: tr("End all local sessions?"), detail: tr("Local processes and SSH connections will stop. Remote tmux jobs may continue independently.") }); if (result.response === 1) { await backend.request('shutdown'); app.quit(); } } }] },
       { label: tr('Project'), submenu: ['projects', 'addProject', 'nextProject', 'previousProject', 'newWindow'].map(entry) },
-      { label: tr('Session'), submenu: ['new', 'connections', 'codex', 'split', 'splitVertical', 'nextPane', 'previousPane', 'paneLeft', 'paneRight', 'paneUp', 'paneDown', 'next', 'previous', 'previousTabBracket', 'nextTabBracket', ...Array.from({ length: 9 }, (_, i) => 'tab' + (i + 1)), 'rename', 'close', 'closeWindow'].map(entry) },
+      { label: tr('Session'), submenu: ['new', 'connections', 'codex', 'split', 'splitVertical', 'nextPane', 'previousPane', 'paneLeft', 'paneRight', 'paneUp', 'paneDown', 'next', 'previous', 'previousTabBracket', 'nextTabBracket', ...Array.from({ length: 9 }, (_, i) => 'tab' + (i + 1)), 'rename', 'close', 'closeTab', 'closeWindow'].map(entry) },
       { label: tr('Edit'), submenu: [{ role: 'undo', accelerator: process.platform === 'darwin' ? 'Cmd+Z' : 'Ctrl+Alt+Z' }, { role: 'redo', accelerator: process.platform === 'darwin' ? 'Cmd+Shift+Z' : 'Ctrl+Alt+Shift+Z' }, ...['cut', 'copy', 'paste', 'selectAll'].map((role, i) => ({ role, accelerator: `${process.platform === 'darwin' ? 'Cmd' : 'Ctrl+Shift'}+${['X', 'C', 'V', 'A'][i]}` })), entry('find')] },
       { label: tr('View'), submenu: [entry('palette'), entry('sidebar'), { role: 'togglefullscreen' }, { label: tr('Increase font'), accelerator: 'CmdOrCtrl+=', click: () => action('fontUp') }, { label: tr('Decrease font'), accelerator: 'CmdOrCtrl+-', click: () => action('fontDown') }] },
       { role: 'windowMenu' }

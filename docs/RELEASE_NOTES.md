@@ -1,3 +1,11 @@
+## Orbit Terminal 0.3.9 — reliable tab switching and pane closing
+
+- Intercept Ctrl+Tab / Ctrl+Shift+Tab before Chromium or xterm forwards them to the shell, including after focus moves into a different terminal.
+- Command+W closes the active pane; Command+Shift+W closes the current tab. Closing a native window while keeping its sessions uses Command+Option+Shift+W.
+- Local shell exit closes its pane automatically, including a nonzero last status. Failed Codex/SSH and stopped sessions keep their screen and restart action.
+- Track keyboard focus inside a pane and show close shortcuts on pane/tab buttons.
+- Native regression checks cycle through tabs eight times with terminal input focused, then close a pane, tab and shell without quitting Orbit.
+
 ## Orbit Terminal 0.3.8 — futuristic font collection
 
 - Bundle Share Tech Mono, VT323, MatrixType and Asterisk Mono from 1001fonts, plus Orbitron from Google Fonts. All original license notices are included.

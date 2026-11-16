@@ -104,6 +104,39 @@ module.exports = (win, app) => {
         await until('!!document.querySelector(".pane-group:not([hidden]) [data-kind=codex]")');
         await until('document.querySelector(".pane-group:not([hidden]) .xterm-screen").innerText.includes("CODEX_TEST_READY")');
         await evaluate('document.querySelectorAll("[role=tab]")[1].click()');
+        const snapshot = () => evaluate('window.__orbitWorkspaceSnapshot()');
+        let navState = await snapshot();
+        const tabIds = navState.tabs.map(t => t.id);
+        let navIndex = tabIds.indexOf(navState.activeTabId);
+        const press = (keyCode, modifiers) => { win.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers }); };
+        win.focus(); win.webContents.focus();
+        for (let n = 0; n < 8; n++) {
+          await evaluate('document.querySelector(".pane-group:not([hidden]) .xterm-helper-textarea").focus()');
+          const backwards = n >= 5;
+          navIndex = (navIndex + (backwards ? -1 : 1) + tabIds.length) % tabIds.length;
+          press('Tab', backwards ? ['control', 'shift'] : ['control']);
+          await until(async () => (await snapshot()).activeTabId === tabIds[navIndex]);
+          assert.equal(await evaluate('!!document.activeElement.closest(".pane-group:not([hidden])")'), true, 'Tab cycling must keep focus in the newly active terminal.');
+        }
+        const newDisposableTab = async () => {
+          await evaluate('document.querySelector("#add-tab").click(); [...document.querySelectorAll(".palette-result")].find(el => el.textContent.includes("Local terminal")).click()');
+          await until(async () => (await snapshot()).tabs.length === 4);
+        };
+        await newDisposableTab();
+        await evaluate('document.querySelector("#split-button").click()');
+        await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2');
+        press('W', process.platform === 'darwin' ? ['meta'] : ['control', 'shift']);
+        await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 1');
+        assert.equal((await snapshot()).tabs.length, 4, 'Closing one pane must retain its tab and other pane.');
+        press('W', process.platform === 'darwin' ? ['meta', 'shift'] : ['control', 'alt', 'shift']);
+        await until(async () => (await snapshot()).tabs.length === 3);
+        await newDisposableTab();
+        await until('document.querySelector(".pane-group:not([hidden]) .xterm-screen").innerText.trim().length > 0');
+        const exitState = await snapshot(), exitId = exitState.tabs.find(t => t.id === exitState.activeTabId).activePaneId;
+        await client.request('write', { id: exitId, data: 'exit 7\r' });
+        try { await until(async () => (await snapshot()).tabs.length === 3); } catch (error) { throw new Error(error.message + ' exit=' + JSON.stringify(await client.request('attach', { id: exitId }))); }
+        assert.equal(BrowserWindow.getAllWindows().length, 1, 'Pane/tab close and exit must not quit Orbit.');
+        await evaluate('document.querySelectorAll("[role=tab]")[1].click()');
         const imageLoads = await evaluate('new Promise(resolve => {const image = new Image();image.onload = () => resolve(image.naturalWidth > 0);image.onerror = () => resolve(false);image.src = "orbit://wallpaper/image";})'); assert(imageLoads);
         await evaluate('document.querySelector("#new-window").click()');
         await until(() => BrowserWindow.getAllWindows().length === 2);

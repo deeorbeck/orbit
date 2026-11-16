@@ -5,6 +5,9 @@ const path = require('node:path');
 const { SessionClient } = require('../src/session-client.cjs');
 const root = path.resolve(__dirname, '..');
 const data = fs.mkdtempSync(path.join(os.tmpdir(), 'orbit-smoke-'));
+// Isolate UI regression checks from user shell startup hooks and their locks.
+const { defaults, saveConfig } = require('../src/config.cjs');
+saveConfig(path.join(data, 'config.json'), { ...defaults, shell: process.platform === 'win32' ? defaults.shell : '/bin/sh' });
 let executable = require('electron');
 const args = process.env.ORBIT_PACKAGED ? [] : [root];
 if (process.env.ORBIT_PACKAGED) {
