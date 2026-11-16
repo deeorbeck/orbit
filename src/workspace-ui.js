@@ -244,20 +244,43 @@ export class WorkspaceUI {
     const group = document.createElement('div'); group.className = 'pane-group'; $('#workspaces').append(group);
     const tab = { id: crypto.randomUUID(), projectId, title: info.label, layout: { type: 'leaf', sessionId: info.id }, activePaneId: info.id, group };
     state.tabs.push(tab); state.activeTabId = tab.id;
-    await this.mountPane(tab, info); this.layout(tab); this.selectVisible(); this.renderProjects(); await this.save(projectId);
+    tab.pendingMutation = this.mountPane(tab, info);
+    try { await tab.pendingMutation; } finally { tab.pendingMutation = null; }
+    this.layout(tab); this.selectVisible(); this.renderProjects(); await this.save(projectId);
   }
   async split(direction = 'horizontal') {
-    const tab = this.activeTab(), source = this.activePane(); if (!tab || !source) return this.newTab();
+    const tab = this.activeTab(); if (!tab) return this.newTab();
+    if (tab.pendingMutation) await tab.pendingMutation;
+    const source = this.panes.get(tab.activePaneId); if (!source) return;
+    const task = this.performSplit(tab, source, direction); tab.pendingMutation = task;
+    try { return await task; } finally { if (tab.pendingMutation === task) tab.pendingMutation = null; }
+  }
+  async performSplit(tab, source, direction) {
     if (leafIds(tab.layout).length >= 12) return this.notify(t("You can open up to 12 panes per tab."));
     const connectionId = source.info.aliasName ? `shell-alias:${source.info.aliasName}` : source.info.serverId?.startsWith('ssh-config:') ? source.info.serverId : null;
-    const info = await this.api.create({ projectId: this.activeProjectId, inheritFrom: source.id, ...(connectionId ? { connectionId } : { serverId: source.info.serverId || null }), codex: !!source.info.codex });
+    const info = await this.api.create({ projectId: tab.projectId, inheritFrom: source.id, ...(connectionId ? { connectionId } : { serverId: source.info.serverId || null }), codex: !!source.info.codex });
     this.ownedIds.add(info.id);
     await this.mountPane(tab, info);
     tab.layout = replaceLeaf(tab.layout, source.id, { type: 'split', direction, ratio: 0.5, first: { type: 'leaf', sessionId: source.id }, second: { type: 'leaf', sessionId: info.id } });
     tab.activePaneId = info.id; this.layout(tab); this.renderTabs(); this.focusActive(); await this.save(tab.projectId);
   }
-  async endPane(id) { if (!id || this.closingIds.has(id)) return; this.closingIds.add(id); try { if (await this.api.close(id)) this.removeLocal([id]); } finally { this.closingIds.delete(id); } }
-  async endTab(tab) { const ids = leafIds(tab.layout); if (ids.some(id => this.closingIds.has(id))) return; ids.forEach(id => this.closingIds.add(id)); try { if (await this.api.close(ids)) this.removeLocal(ids); } finally { ids.forEach(id => this.closingIds.delete(id)); } }
+  async endPane(id) {
+    if (!id || this.closingIds.has(id)) return; this.closingIds.add(id);
+    try {
+      const pane = this.panes.get(id), tab = pane && this.states.get(pane.projectId)?.tabs.find(t => t.id === pane.tabId);
+      if (tab?.pendingMutation) await tab.pendingMutation;
+      if (this.panes.has(id) && await this.api.close(id)) this.removeLocal([id]);
+    } finally { this.closingIds.delete(id); }
+  }
+  async endTab(tab) {
+    if (tab.closing) return; tab.closing = true; let ids = [];
+    try {
+      if (tab.pendingMutation) await tab.pendingMutation;
+      ids = leafIds(tab.layout); if (ids.some(id => this.closingIds.has(id))) return;
+      ids.forEach(id => this.closingIds.add(id));
+      if (await this.api.close(ids)) this.removeLocal(ids);
+    } finally { ids.forEach(id => this.closingIds.delete(id)); tab.closing = false; }
+  }
   removeLocal(ids) {
     const changed = new Set();
     for (const id of ids) {

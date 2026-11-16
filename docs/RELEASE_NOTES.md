@@ -1,3 +1,8 @@
+## Orbit Terminal 0.3.11 — close safely while a split is opening
+
+- Wait for an in-progress terminal attach/split before ending a pane or tab, so a close cannot dispose the old layout while its new pane is still mounting.
+- Includes repeated Ctrl+Tab / Ctrl+Shift+Tab, single-dispatch pane/tab shortcuts and automatic local-shell close on exit.
+
 ## Orbit Terminal 0.3.10 — single-dispatch tab and close shortcuts
 
 - Ctrl+Tab / Ctrl+Shift+Tab and pane/tab close shortcuts are handled only before terminal input; native menus display them without registering a second accelerator.
