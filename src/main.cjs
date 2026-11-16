@@ -138,7 +138,7 @@ else {
       const win = BrowserWindow.fromWebContents(event.sender); if (!windowId(win)) return;
       backend.request(channel === 'terminal:write' ? 'write' : 'resize', value).catch(error => broadcast('app:error', error.message));
     });
-    safeHandle('config:save', (_win, value) => { config = saveConfig(configFile, value); rebuildMenu(); broadcast('config:changed', config); return config; });
+    safeHandle('config:save', (_win, value) => { const previousLanguage = config.language; config = saveConfig(configFile, value); if (previousLanguage !== config.language) rebuildMenu(); broadcast('config:changed', config); return config; });
     safeHandle('config:open', async () => { const error = await shell.openPath(configFile); if (error) throw new Error(error); });
     safeHandle('dialog:directory', async win => (await dialog.showOpenDialog(win, { properties: ['openDirectory'], defaultPath: config.startingDirectory })).filePaths[0] || null);
     safeHandle('dialog:identity', async win => (await dialog.showOpenDialog(win, { title: 'Choose SSH private key', defaultPath: path.join(os.homedir(), '.ssh'), properties: ['openFile', 'showHiddenFiles'] })).filePaths[0] || null);
@@ -155,7 +155,7 @@ else {
       return aliases;
     });
     let debounce;
-    watcher = fs.watch(path.dirname(configFile), (_event, filename) => { if (String(filename) !== 'config.json') return; clearTimeout(debounce); debounce = setTimeout(() => { try { config = readConfig(); rebuildMenu(); broadcast('config:changed', config); } catch (error) { broadcast('app:error', `Config not loaded: ${error.message}`); } }, 200); });
+    watcher = fs.watch(path.dirname(configFile), (_event, filename) => { if (String(filename) !== 'config.json') return; clearTimeout(debounce); debounce = setTimeout(() => { try { const previousLanguage = config.language; config = readConfig(); if (previousLanguage !== config.language) rebuildMenu(); broadcast('config:changed', config); } catch (error) { broadcast('app:error', `Config not loaded: ${error.message}`); } }, 200); });
     const binding = id => shortcuts().find(s => s.id === id);
     const entry = id => ({ label: tr(binding(id).label), accelerator: binding(id).accelerator, click: () => id === 'closeWindow' ? activeWindow()?.close() : action(id) });
     const rebuildMenu = () => Menu.setApplicationMenu(Menu.buildFromTemplate([

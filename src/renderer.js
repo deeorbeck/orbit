@@ -42,7 +42,7 @@ const run = callback => Promise.resolve().then(callback).catch(error => notify(e
 function shortPath(value) { return value?.startsWith(home) ? '~' + value.slice(home.length) : value; }
 function button(label, className, onClick) { const el = document.createElement('button'); el.className = className; el.textContent = label; el.onclick = onClick; return el; }
 function shortcutLabel(value) { return platform === 'darwin' ? value : value.replaceAll('⌘', 'Ctrl Shift').replaceAll('⇧', '').replaceAll('⌃', 'Ctrl').replace(/\s+/g, ' ').trim(); }
-function save() { clearTimeout(saving); saving = setTimeout(() => run(async () => { await api.save(config); }), 150); }
+function save() { clearTimeout(saving); const pending = structuredClone(config); saving = setTimeout(() => { saving = null; run(async () => { await api.save(pending); }); }, 150); }
 function applyAppearance() {
   const a = config.appearance;
   const theme = themes[a.theme] || themes.graphite;
@@ -221,7 +221,7 @@ function handleAction(name) {
 }
 api.onError(notify);
 api.onAction(handleAction);
-api.onConfig(value => { const changed = config?.language !== value.language; config = value; if (changed) localizeUI(); applyAppearance(); renderServers(); renderFontOptions(); });
+api.onConfig(value => { if (saving) return; const changed = config?.language !== value.language; config = value; if (changed) localizeUI(); applyAppearance(); renderServers(); renderFontOptions(); });
 api.onWallpaper(url => { wallpaperUrl = url; applyAppearance(); });
 document.querySelectorAll('.close-dialog').forEach(el => el.onclick = () => el.closest('dialog').close());
 document.querySelectorAll('dialog').forEach(dialog => { dialog.addEventListener('click', event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close(); } }); dialog.addEventListener('close', updateFocus); });

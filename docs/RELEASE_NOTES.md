@@ -1,3 +1,8 @@
+## Orbit Terminal 0.3.6 — terminal input, navigation and reliable preferences
+
+- Includes visible input in small panes, restored live-bottom position, directional Option-arrow navigation and numbered / bracket tab shortcuts.
+- Preserve pending local preferences when an older config notification arrives. Rebuild native menus only when the interface language changes.
+
 ## Orbit Terminal 0.3.5 — terminal input and navigation
 
 - Includes all small-pane input, live-bottom restoration and keyboard navigation fixes.

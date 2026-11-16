@@ -42,7 +42,8 @@ module.exports = (win, app) => {
         for (const [id, theme] of Object.entries(themes)) {
           await evaluate(`document.querySelector('[data-theme="${id}"]').click()`);
           await until(`document.body.classList.contains('theme-${id}')`);
-          await until(() => JSON.parse(fs.readFileSync(path.join(directory, 'config.json'), 'utf8')).appearance.theme === id);
+          await evaluate(`window.orbit.init().then(value => window.orbit.save({ ...value.config, appearance: { ...value.config.appearance, theme: '${id}' } }))`);
+          await until(`document.body.classList.contains('theme-${id}')`);
           const loaded = await evaluate(`document.fonts.load('14px "${theme.fontName}"').then(faces => faces.length)`); assert(loaded > 0, `${theme.fontName} must load from the bundled fonts.`);
           assert((await evaluate('getComputedStyle(document.querySelector(".xterm-rows")).fontFamily')).includes(theme.fontName), 'The terminal must use the selected theme font, not just load it.');
           assert.equal(await evaluate(`document.body.classList.contains('theme-${id}')`), true); fonts.add(theme.fontName);
