@@ -128,6 +128,8 @@ module.exports = (win, app) => {
         press('W', process.platform === 'darwin' ? ['meta'] : ['control', 'shift']);
         await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 1');
         assert.equal((await snapshot()).tabs.length, 4, 'Closing one pane must retain its tab and other pane.');
+        await evaluate('document.querySelector("#split-button").click()');
+        await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2');
         press('W', process.platform === 'darwin' ? ['meta', 'shift'] : ['control', 'alt', 'shift']);
         await until(async () => (await snapshot()).tabs.length === 3);
         await newDisposableTab();

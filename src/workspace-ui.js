@@ -19,7 +19,7 @@ export class WorkspaceUI {
     Object.assign(this, { api, icon, appearance, theme, notify, openProject, openRename });
     this.projects = initial.projects; this.window = initial.window; this.home = initial.home; this.platform = initial.platform;
     this.activeProjectId = this.window.activeProjectId;
-    this.panes = new Map(); this.states = new Map(); this.loads = new Map(); this.earlyData = new Map(); this.ready = false; this.navigation = 0;
+    this.panes = new Map(); this.closingIds = new Set(); this.states = new Map(); this.loads = new Map(); this.earlyData = new Map(); this.ready = false; this.navigation = 0;
     this.knownSessions = new Map(initial.sessions.map(s => [s.id, s]));
     this.ownedIds = new Set(initial.sessions.filter(s => s.windowId === this.window.id).map(s => s.id));
     api.onData(event => this.handleData(event));
@@ -256,13 +256,13 @@ export class WorkspaceUI {
     tab.layout = replaceLeaf(tab.layout, source.id, { type: 'split', direction, ratio: 0.5, first: { type: 'leaf', sessionId: source.id }, second: { type: 'leaf', sessionId: info.id } });
     tab.activePaneId = info.id; this.layout(tab); this.renderTabs(); this.focusActive(); await this.save(tab.projectId);
   }
-  async endPane(id) { if (!id) return; if (await this.api.close(id)) this.removeLocal([id]); }
-  async endTab(tab) { const ids = leafIds(tab.layout); if (await this.api.close(ids)) this.removeLocal(ids); }
+  async endPane(id) { if (!id || this.closingIds.has(id)) return; this.closingIds.add(id); try { if (await this.api.close(id)) this.removeLocal([id]); } finally { this.closingIds.delete(id); } }
+  async endTab(tab) { const ids = leafIds(tab.layout); if (ids.some(id => this.closingIds.has(id))) return; ids.forEach(id => this.closingIds.add(id)); try { if (await this.api.close(ids)) this.removeLocal(ids); } finally { ids.forEach(id => this.closingIds.delete(id)); } }
   removeLocal(ids) {
     const changed = new Set();
     for (const id of ids) {
       const p = this.panes.get(id); if (!p) continue;
-      p.term.dispose(); p.el.remove(); this.panes.delete(id);
+      this.panes.delete(id); p.el.remove(); p.term.dispose();
       changed.add(p.projectId);
       const state = this.states.get(p.projectId), tab = state.tabs.find(t => t.id === p.tabId); if (!tab) continue;
       tab.layout = replaceLeaf(tab.layout, id, null);

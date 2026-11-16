@@ -1,3 +1,9 @@
+## Orbit Terminal 0.3.10 — single-dispatch tab and close shortcuts
+
+- Ctrl+Tab / Ctrl+Shift+Tab and pane/tab close shortcuts are handled only before terminal input; native menus display them without registering a second accelerator.
+- Prevent overlapping close requests and remove pane references before disposing their terminal.
+- Includes reliable repeated tab cycling, Command+W pane close, Command+Shift+W tab close and automatic local-shell close on exit.
+
 ## Orbit Terminal 0.3.9 — reliable tab switching and pane closing
 
 - Intercept Ctrl+Tab / Ctrl+Shift+Tab before Chromium or xterm forwards them to the shell, including after focus moves into a different terminal.
