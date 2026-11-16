@@ -19,7 +19,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm test
+      - run: node scripts/test-ci.cjs
       - run: npm run build
       - name: Desktop and PTY smoke test (Linux)
         if: runner.os == 'Linux'

@@ -45,7 +45,7 @@ jobs:
           RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: node -e "if(process.env.RELEASE_TAG !== 'v'+require('./package.json').version) process.exit(1)"
       - run: npm ci
-      - run: npm test
+      - run: node scripts/test-ci.cjs
       - run: npm run build
       - name: Desktop and PTY smoke test (Linux)
         if: runner.os == 'Linux'
