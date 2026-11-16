@@ -1,3 +1,8 @@
+## Orbit Terminal 0.3.5 — terminal input and navigation
+
+- Includes all small-pane input, live-bottom restoration and keyboard navigation fixes.
+- Wait for saved theme and source-pane activation in native smoke tests to avoid racing asynchronous UI updates on slower runners.
+
 ## Orbit Terminal 0.3.4 — verified pane navigation and visible input
 
 - Includes the small-pane input geometry, live-bottom restoration and Option-arrow / tab navigation fixes from 0.3.2–0.3.3.

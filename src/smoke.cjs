@@ -41,6 +41,8 @@ module.exports = (win, app) => {
         const fonts = new Set();
         for (const [id, theme] of Object.entries(themes)) {
           await evaluate(`document.querySelector('[data-theme="${id}"]').click()`);
+          await until(`document.body.classList.contains('theme-${id}')`);
+          await until(() => JSON.parse(fs.readFileSync(path.join(directory, 'config.json'), 'utf8')).appearance.theme === id);
           const loaded = await evaluate(`document.fonts.load('14px "${theme.fontName}"').then(faces => faces.length)`); assert(loaded > 0, `${theme.fontName} must load from the bundled fonts.`);
           assert((await evaluate('getComputedStyle(document.querySelector(".xterm-rows")).fontFamily')).includes(theme.fontName), 'The terminal must use the selected theme font, not just load it.');
           assert.equal(await evaluate(`document.body.classList.contains('theme-${id}')`), true); fonts.add(theme.fontName);
@@ -78,6 +80,8 @@ module.exports = (win, app) => {
         const menu = require('electron').Menu.getApplicationMenu();
         const sessionMenu = menu.items.find(item => item.submenu?.items.some(entry => entry.label === 'Focus pane above')).submenu;
         const activeId = () => evaluate('window.__orbitWorkspaceSnapshot().tabs.find(t => t.id === window.__orbitWorkspaceSnapshot().activeTabId).activePaneId');
+        await until(async () => await activeId() === paneIds[2]);
+        await evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
         sessionMenu.items.find(item => item.label === 'Focus pane above').click();
         await until(async () => await activeId() === paneIds[1]);
         sessionMenu.items.find(item => item.label === 'Focus pane below').click();
