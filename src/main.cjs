@@ -1,3 +1,4 @@
+const { listFonts, importFonts, fontDirectory } = require('./local-fonts.cjs');
 const { inputAction } = require('./input-shortcuts.cjs');
 const { translate } = require('./i18n.cjs');
 const tr = (message, values) => translate(config?.language, message, values);
@@ -15,7 +16,7 @@ const { connectionCatalog } = require('./connections.cjs');
 
 app.setName('Orbit Terminal');
 app.setPath('userData', process.env.ORBIT_TEST_DATA || path.join(app.getPath('appData'), 'Orbit Terminal'));
-protocol.registerSchemesAsPrivileged([{ scheme: 'orbit', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
+protocol.registerSchemesAsPrivileged([{ scheme: 'orbit', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 const windows = new Map();
 const subscriptions = new Map();
 let config, configFile, wallpaperFile, watcher, backend, workspaces;
@@ -41,6 +42,7 @@ function buildWindow(state) {
   const positionValid = Number.isFinite(bounds.x) && Number.isFinite(bounds.y) && screen.getAllDisplays().some(d => bounds.x >= d.bounds.x - 100 && bounds.x < d.bounds.x + d.bounds.width && bounds.y >= d.bounds.y - 50 && bounds.y < d.bounds.y + d.bounds.height);
   const win = new BrowserWindow({ width: Math.max(740, Math.min(2400, bounds.width || 1320)), height: Math.max(480, Math.min(1600, bounds.height || 860)), ...(positionValid ? { x: bounds.x, y: bounds.y } : {}), minWidth: 740, minHeight: 480, title: 'Orbit Terminal', backgroundColor: '#111519', icon: path.join(__dirname, '..', 'assets', 'orbit.png'), ...chrome, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false } });
   windows.set(state.id, win);
+  if (process.env.ORBIT_SMOKE_TEST) win.webContents.on('console-message', details => { if (details.level === 'error') console.log('ORBIT_RENDERER:', details.message); });
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown' && input.type !== 'keyUp') return;
     const name = inputAction({ ...input, type: 'keyDown' });
@@ -90,11 +92,16 @@ else {
     backend.on('disconnected', () => broadcast('app:error', tr("Session service disconnected. Reopen Orbit to check your sessions.")));
     if (!fs.existsSync(wallpaperFile)) fs.copyFileSync(path.join(__dirname, '..', 'assets', 'wallpaper.svg'), wallpaperFile);
     protocol.handle('orbit', request => {
+      if (request.url.startsWith('orbit://font/')) {
+        const file = decodeURIComponent(new URL(request.url).pathname.slice(1));
+        if (!listFonts(app.getPath('userData')).some(font => font.file === file)) return new Response('Not found', { status: 404 });
+        return new Response(fs.readFileSync(path.join(fontDirectory(app.getPath('userData')), file)), { headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'font/' + path.extname(file).slice(1).toLowerCase() } });
+      }
       if (!request.url.startsWith('orbit://wallpaper/')) return new Response('Not found', { status: 404 });
       const bytes = fs.readFileSync(wallpaperFile);
       return bytes.subarray(0, 512).toString().includes('<svg') ? new Response(bytes, { headers: { 'Content-Type': 'image/svg+xml' } }) : net.fetch(pathToFileURL(wallpaperFile).href);
     });
-    safeHandle('app:init', async win => ({ config, home: os.homedir(), configFile, platform: process.platform, wallpaper: 'orbit://wallpaper/image', version: app.getVersion(), projects: workspaces.state.projects, window: workspaces.window(windowId(win)), sessions: await backend.request('list'), shortcuts: shortcuts() }));
+    safeHandle('app:init', async win => ({ config, home: os.homedir(), configFile, platform: process.platform, wallpaper: 'orbit://wallpaper/image', localFonts: listFonts(app.getPath('userData')), version: app.getVersion(), projects: workspaces.state.projects, window: workspaces.window(windowId(win)), sessions: await backend.request('list'), shortcuts: shortcuts() }));
     safeHandle('window:new', (win, value) => {
       if (workspaces.state.windows.length >= 12) throw new Error(tr("Up to 12 Orbit windows can be saved. Use tabs and panes in an existing window."));
       const state = workspaces.newWindow(value?.projectId || workspaces.window(windowId(win)).activeProjectId);
@@ -120,6 +127,13 @@ else {
       }
       const sourceRemoteSession = sourceSession?.serverId === serverId ? sourceSession?.sessionName : null;
       return backend.request('create', { id: randomUUID(), options: { projectId: project.id, windowId: windowId(win), serverId, aliasName, sourceRemoteSession, codex: !!options.codex, cwd, config: sessionConfig } });
+    });
+    safeHandle('font:import', async win => {
+      const result = await dialog.showOpenDialog(win, { title: 'Import terminal fonts', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Fonts', extensions: ['ttf', 'otf', 'woff', 'woff2'] }] });
+      if (result.canceled) return [];
+      const imported = importFonts(app.getPath('userData'), result.filePaths);
+      broadcast('fonts:changed', listFonts(app.getPath('userData')));
+      return imported;
     });
     safeHandle('connection:list', () => refreshCatalog());
     safeHandle('terminal:attach', (win, id) => {

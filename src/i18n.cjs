@@ -1,5 +1,6 @@
 // English message keys are also the fallback for future translations.
 const uz = {
+  "Import font…": "Font import qilish…",
   "End current tab": "Faol tabni tugatish",
   "Tech / coding": "Texno / kodlash",
   "Retro terminal": "Retro terminal",

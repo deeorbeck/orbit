@@ -2,7 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { BrowserWindow } = require('electron');
+const { ipcMain, BrowserWindow } = require('electron');
 const { SessionClient } = require('./session-client.cjs');
 const { themes } = require('./themes.cjs');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -13,7 +13,7 @@ module.exports = (win, app) => {
     throw new Error(`Timed out: ${test}`);
   };
   const sendCommand = async command => {
-    win.focus(); win.webContents.focus(); await evaluate('document.querySelector(".pane-group:not([hidden]) .active-pane .xterm-helper-textarea, .pane-group:not([hidden]) .xterm-helper-textarea").focus()');
+    app.focus({ steal: true }); win.focus(); win.webContents.focus(); await evaluate('document.querySelector(".pane-group:not([hidden]) .active-pane .xterm-helper-textarea, .pane-group:not([hidden]) .xterm-helper-textarea").focus()');
     await win.webContents.insertText(command); win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
   };
   win.webContents.once('did-finish-load', async () => {
@@ -50,23 +50,41 @@ module.exports = (win, app) => {
           assert.equal(await evaluate(`document.body.classList.contains('theme-${id}')`), true); fonts.add(theme.fontName);
         }
         assert.equal(fonts.size, 10);
-        for (const font of require('./font-catalog.cjs').extraFonts) {
-          const loaded = await evaluate(`document.fonts.load('16px "${font.name}"').then(faces => faces.length)`);
+        for (const font of [...require('./font-catalog.cjs').extraFonts, ...(await evaluate('window.orbit.init().then(value => value.localFonts)'))]) {
+          const loaded = await evaluate(`document.fonts.load('16px ${font.fontFamily}').then(faces => faces.length)`);
           assert(loaded > 0, `${font.name} must load offline from its bundled TTF.`);
           await evaluate(`document.querySelector('#font-family').value = ${JSON.stringify(font.fontFamily)}; document.querySelector('#font-family').dispatchEvent(new Event('change'))`);
-          await until(`getComputedStyle(document.querySelector('.xterm-rows')).fontFamily.includes(${JSON.stringify(font.name)})`);
-          assert((await evaluate('document.querySelector("#font-preview").style.fontFamily')).includes(font.name));
+          await until(`getComputedStyle(document.querySelector('.xterm-rows')).fontFamily.includes(${JSON.stringify(font.face || font.name)})`);
+          assert((await evaluate('document.querySelector("#font-preview").style.fontFamily')).includes(font.face || font.name));
           assert(await evaluate(`!![...document.querySelector('#font-family').options].find(option => option.value === ${JSON.stringify(font.fontFamily)})`));
         }
         await evaluate('document.querySelector("#font-family").value="";document.querySelector("#font-family").dispatchEvent(new Event("change"))');
         await until('document.querySelector("#font-family").value === ""');
 
+        assert.equal(await evaluate('document.querySelector(".statusbar")'), null, 'The footer must not occupy terminal space.');
+        const sizeBefore = await evaluate('Number(document.querySelector("#font-size").value)');
+        await evaluate(`document.querySelector('#terminal-area').dispatchEvent(new WheelEvent('wheel', { deltaY: -100, ${process.platform === 'darwin' ? 'metaKey' : 'ctrlKey'}: true, bubbles: true, cancelable: true }))`);
+        await until(`Number(document.querySelector('#font-size').value) === ${sizeBefore + 1}`);
+        await until(`parseFloat(getComputedStyle(document.querySelector('.xterm-rows')).fontSize) === ${sizeBefore + 1}`);
+        await evaluate(`document.querySelector('#terminal-area').dispatchEvent(new WheelEvent('wheel', { deltaY: 100, ${process.platform === 'darwin' ? 'metaKey' : 'ctrlKey'}: true, bubbles: true, cancelable: true }))`);
+        await until(`Number(document.querySelector('#font-size').value) === ${sizeBefore}`);
         const projectFolder = path.join(directory, 'QA project'), childFolder = path.join(projectFolder, 'active-folder'); fs.mkdirSync(childFolder, { recursive: true });
         await evaluate('document.querySelector("#add-project").click()');
         await evaluate(`document.querySelector('#project-form').elements.name.value = 'QA project'; document.querySelector('#project-form').elements.cwd.value = ${JSON.stringify(projectFolder)}; document.querySelector('#project-form').requestSubmit()`);
         await until('document.querySelector("#folder-name").textContent === "QA project" && document.querySelectorAll("[role=tab]").length === 1');
         await until('document.querySelector(".pane-group:not([hidden]) .xterm-screen").innerText.trim().length > 0');
         const originalId = await evaluate('document.querySelector(".pane-group:not([hidden]) .terminal-pane").dataset.sessionId');
+        if (process.platform === 'darwin') {
+          await win.webContents.insertText("printf '\\nSHIFT_%s\\n' ENTER_OK;");
+          win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['shift'] });
+          win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers: ['shift'] });
+          await win.webContents.insertText("printf '\\nNEXT_%s\\n' LINE_OK");
+          await delay(150);
+          assert(!(await client.request('attach', { id: originalId })).snapshot.includes('SHIFT_ENTER_OK'), 'Shift+Enter must not run the first line.');
+          win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
+          win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
+          await until(async () => { const screen = (await client.request('attach', { id: originalId })).snapshot; return screen.includes('SHIFT_ENTER_OK') && screen.includes('NEXT_LINE_OK'); });
+        }
         const command = process.platform === 'win32' ? `$global:ORBIT_KEEP='kept'; Set-Location -LiteralPath '${childFolder.replaceAll("'", "''")}'; Write-Output ('DESKTOP_STATE:'+$global:ORBIT_KEEP)` : `export ORBIT_KEEP=kept; cd '${childFolder.replaceAll("'", "'\\''")}'; printf '\\nDESKTOP_STATE:%s\\n' "$ORBIT_KEEP"`;
         await sendCommand(command);
         await until(async () => (await client.request('attach', { id: originalId })).snapshot.includes('DESKTOP_STATE:kept'));
@@ -77,7 +95,7 @@ module.exports = (win, app) => {
         await evaluate('document.querySelector("#split-button").click()');
         await until('(() => { const s = window.__orbitWorkspaceSnapshot(), t = s.tabs.find(t => t.id === s.activeTabId); return t.layout.type === "split" && document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 2; })()');
         await evaluate('document.querySelector("#split-vertical-button").click()');
-        await until('document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 3');
+        await until('(() => { const s=window.__orbitWorkspaceSnapshot(), t=s.tabs.find(t=>t.id===s.activeTabId), count=n=>n.type==="leaf"?1:count(n.first)+count(n.second); return count(t.layout)===3 && document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length===3; })()');
         // The final row must fit above the pane edge, including padding, in small splits.
         win.setSize(900, 560);
         const screensFit = `(() => [...document.querySelectorAll('.pane-group:not([hidden]) .terminal-pane')].every(p => { const screen = p.querySelector('.xterm-screen').getBoundingClientRect(), mount = p.querySelector('.terminal-mount'), rect = mount.getBoundingClientRect(), css = getComputedStyle(mount); return screen.height > 0 && screen.bottom <= rect.bottom - parseFloat(css.paddingBottom) + 1 && screen.right <= rect.right - parseFloat(css.paddingRight) + 1; }))()`;
@@ -88,7 +106,7 @@ module.exports = (win, app) => {
         win.setSize(1320, 860);
         await until(screensFit);
         const paneIds = await evaluate(`(() => { const rects = [...document.querySelectorAll('.pane-group:not([hidden]) .terminal-pane')].map(el => ({ id: el.dataset.sessionId, ...el.getBoundingClientRect().toJSON() })); const bottom = rects.toSorted((a,b) => b.top-a.top)[0]; const top = rects.find(r => r.id !== bottom.id && r.bottom <= bottom.top && r.left === bottom.left); if (!top) throw new Error('Expected a vertical pair'); return [rects.find(r => r.id !== top.id && r.id !== bottom.id).id, top.id, bottom.id]; })()`);
-        win.focus(); win.webContents.focus();
+        app.focus({ steal: true }); win.focus(); win.webContents.focus();
         await until(() => win.isFocused());
         await evaluate(`document.querySelector('[data-session-id="${paneIds[2]}"]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))`);
         const activeId = () => evaluate('window.__orbitWorkspaceSnapshot().tabs.find(t => t.id === window.__orbitWorkspaceSnapshot().activeTabId).activePaneId');
@@ -104,13 +122,21 @@ module.exports = (win, app) => {
         await evaluate('document.querySelector("#new-codex").click()');
         await until('!!document.querySelector(".pane-group:not([hidden]) [data-kind=codex]")');
         await until('document.querySelector(".pane-group:not([hidden]) .xterm-screen").innerText.includes("CODEX_TEST_READY")');
+        const shiftWrites = [];
+        const captureShift = (_event, value) => shiftWrites.push(value.data);
+        ipcMain.on('terminal:write', captureShift);
+        win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['shift'] });
+        win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers: ['shift'] });
+        await until(() => shiftWrites.length > 0);
+        ipcMain.removeListener('terminal:write', captureShift);
+        assert.deepEqual(shiftWrites, ['\x1b[13;2u'], 'Shift+Enter must reach Codex as a modified Enter, never submit.');
         await evaluate('document.querySelectorAll("[role=tab]")[1].click()');
         const snapshot = () => evaluate('window.__orbitWorkspaceSnapshot()');
         let navState = await snapshot();
         const tabIds = navState.tabs.map(t => t.id);
         let navIndex = tabIds.indexOf(navState.activeTabId);
         const press = (keyCode, modifiers) => { win.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers }); };
-        win.focus(); win.webContents.focus();
+        app.focus({ steal: true }); win.focus(); win.webContents.focus();
         for (let n = 0; n < 8; n++) {
           await evaluate('document.querySelector(".pane-group:not([hidden]) .xterm-helper-textarea").focus()');
           const backwards = n >= 5;
@@ -152,12 +178,12 @@ module.exports = (win, app) => {
         assert.equal(sessions.length, 7, 'Expected seven independent processes across projects and windows.');
         fs.writeFileSync(stateFile, JSON.stringify({ originalId, childFolder, sessions: sessions.map(({ id, pid }) => ({ id, pid })) }));
         if (process.env.ORBIT_SMOKE_CAPTURE) { const image = await win.webContents.capturePage(); fs.writeFileSync(process.env.ORBIT_SMOKE_CAPTURE, image.toPNG()); }
-        console.log('ORBIT_SMOKE_PASS: ten bundled fonts, project isolation, inherited cwd, Codex icon, connection picker, both split directions and second window');
+        console.log('ORBIT_SMOKE_PASS: bundled and imported fonts, font zoom, no footer, Shift+Enter, projects, splits and native shortcuts');
       }
       client.disconnect(); app.quit();
     } catch (error) {
       client?.disconnect(); console.error('ORBIT_SMOKE_FAIL:', error.stack);
-      if (process.env.CI) console.error('ORBIT_SMOKE_STATE:', await evaluate('JSON.stringify({focus:document.activeElement?.className,terminal:document.querySelector(".pane-group:not([hidden]) .xterm-screen")?.innerText.slice(-1500),error:document.querySelector("#toast")?.textContent})').catch(() => 'Renderer unavailable'));
+      console.error('ORBIT_SMOKE_STATE:', await evaluate('JSON.stringify({focus:document.activeElement?.className,terminal:document.querySelector(".pane-group:not([hidden]) .xterm-screen")?.innerText.slice(-1500),error:document.querySelector("#toast")?.textContent})').catch(() => 'Renderer unavailable'));
       app.exit(1);
     }
   });

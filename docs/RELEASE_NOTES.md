@@ -1,3 +1,10 @@
+## Orbit Terminal 0.3.12 — local fonts and more terminal space
+
+- Import private TTF, OTF, WOFF and WOFF2 fonts in Settings; switch fonts live and keep imports across updates. Distinct CSS families avoid font metadata collisions.
+- Remove the workspace footer so terminal content can use the full remaining window height.
+- Command+scroll (Control+scroll on Windows/Linux) adjusts terminal font size without scrolling the terminal at the same time.
+- Shift+Enter inserts a newline in shell input and sends modified Enter to Codex; ordinary Enter still submits.
+
 ## Orbit Terminal 0.3.11 — reliable tab switching and pane closing
 
 - Ctrl+Tab / Ctrl+Shift+Tab repeatedly switch tabs while terminal input has focus, without sending the shortcut into the shell.

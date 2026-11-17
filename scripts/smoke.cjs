@@ -8,6 +8,8 @@ const data = fs.mkdtempSync(path.join(os.tmpdir(), 'orbit-smoke-'));
 // Isolate UI regression checks from user shell startup hooks and their locks.
 const { defaults, saveConfig } = require('../src/config.cjs');
 saveConfig(path.join(data, 'config.json'), { ...defaults, shell: process.platform === 'win32' ? defaults.shell : '/bin/sh' });
+const { importFonts } = require('../src/local-fonts.cjs');
+importFonts(data, [path.join(root, 'assets/fonts/ibmplexmono.woff2'), ...JSON.parse(process.env.ORBIT_TEST_FONT_FILES || '[]')]);
 let executable = require('electron');
 const args = process.env.ORBIT_PACKAGED ? [] : [root];
 if (process.env.ORBIT_PACKAGED) {

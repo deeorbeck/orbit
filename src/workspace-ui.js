@@ -23,7 +23,7 @@ export class WorkspaceUI {
     this.knownSessions = new Map(initial.sessions.map(s => [s.id, s]));
     this.ownedIds = new Set(initial.sessions.filter(s => s.windowId === this.window.id).map(s => s.id));
     api.onData(event => this.handleData(event));
-    api.onCwd(event => { const p = this.panes.get(event.id); if (p) { p.info.cwd = event.cwd; this.renderPane(p); this.updateFooter(); } });
+    api.onCwd(event => { const p = this.panes.get(event.id); if (p) { p.info.cwd = event.cwd; this.renderPane(p); } });
     api.onExit(event => this.handleExit(event)); api.onStatus(event => this.setStatus(event));
     api.onRemoved(({ id }) => { if (this.panes.has(id)) this.removeLocal([id]); });
     api.onProjects(projects => { this.projects = projects; this.renderProjects(); });
@@ -134,14 +134,6 @@ export class WorkspaceUI {
     const p = this.activePane();
     for (const pane of this.panes.values()) pane.el.classList.toggle('active-pane', pane === p);
     if (p && !document.querySelector('dialog[open]') && !document.activeElement?.closest('.find-bar')) p.term.focus();
-    this.updateFooter();
-  }
-  updateFooter() {
-    const p = this.activePane();
-    $('#connection-status').textContent = p ? this.kindName(p) + (p.info.status === 'running' ? t(" · running") : p.info.status === 'reconnecting' ? t(" · reconnecting") : t(" · stopped")) : t("Open a new terminal");
-    $('#connection-dot').style.background = !p || p.info.status === 'running' ? '#89b8a3' : '#b99b75';
-    $('#session-location').textContent = p ? this.shortPath(p.info.cwd) : this.shortPath(this.project().cwd);
-    $('#terminal-size').textContent = p ? `${p.term.cols} × ${p.term.rows}` : '—';
   }
   async mountPane(tab, info, restored = null) {
     const el = document.createElement('section'); el.className = 'terminal-pane';
@@ -166,6 +158,15 @@ export class WorkspaceUI {
     term.onTitleChange(title => { el.title = title; });
     term.attachCustomKeyEventHandler(e => {
       const mod = this.platform === 'darwin' ? e.metaKey : e.ctrlKey;
+      if (e.key === 'Enter' && e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey && !e.isComposing) {
+        e.preventDefault();
+        if (e.type === 'keydown' && pane.info.status === 'running') {
+          if (pane.info.codex) this.api.write(info.id, '\x1b[13;2u');
+          else if (term.modes.bracketedPasteMode) term.paste('\n');
+          else this.api.write(info.id, this.platform === 'win32' ? '\x1b[13;2u' : '\x16\n');
+        }
+        return false;
+      }
       let navigate;
       if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) navigate = () => this.movePane(e.key.slice(5).toLowerCase());
       if (mod && e.shiftKey && !e.altKey && ['BracketLeft', 'BracketRight'].includes(e.code)) navigate = () => this.cycleTab(e.code === 'BracketRight' ? 1 : -1);
@@ -225,7 +226,7 @@ export class WorkspaceUI {
     const info = this.panes.get(event.id)?.info;
     if (info && (info.exitCode === 0 || (!info.serverId && !info.aliasName && !info.codex))) this.run(() => this.endPane(event.id));
   }
-  setStatus(info) { const p = this.panes.get(info.id); if (p) { if (p.restoring) p.pendingStatus = { ...p.pendingStatus, ...info }; p.info = { ...p.info, ...info }; this.renderPane(p); this.updateFooter(); } }
+  setStatus(info) { const p = this.panes.get(info.id); if (p) { if (p.restoring) p.pendingStatus = { ...p.pendingStatus, ...info }; p.info = { ...p.info, ...info }; this.renderPane(p); } }
   layout(tab) {
     const render = node => {
       if (node.type === 'leaf') return this.panes.get(node.sessionId)?.el || document.createElement('div');
@@ -243,7 +244,6 @@ export class WorkspaceUI {
   fit() {
     const tab = this.activeTab(); if (!tab) return;
     for (const id of leafIds(tab.layout)) { const p = this.panes.get(id); if (!p || p.mount.clientWidth < 30 || p.mount.clientHeight < 30) continue; try { const atBottom = p.term.buffer.active.viewportY >= p.term.buffer.active.baseY; p.fit.fit(); if (atBottom) p.term.scrollToBottom(); if (p.info.cols !== p.term.cols || p.info.rows !== p.term.rows) { p.info.cols = p.term.cols; p.info.rows = p.term.rows; this.api.resize(id, p.term.cols, p.term.rows); } } catch {} }
-    this.updateFooter();
   }
   async newTab(options = {}) {
     const projectId = this.activeProjectId, state = this.state();
@@ -315,7 +315,7 @@ export class WorkspaceUI {
   cycleTab(delta) { const i = this.tabs.findIndex(t => t.id === this.state().activeTabId); if (this.tabs.length) this.selectTab(this.tabs[(i + delta + this.tabs.length) % this.tabs.length].id); }
   cyclePane(delta) { const ids = leafIds(this.activeTab()?.layout), i = ids.indexOf(this.activePane()?.id); if (ids.length) this.focusPane(ids[(i + delta + ids.length) % ids.length]); }
   cycleProject(delta) { const i = this.projects.findIndex(p => p.id === this.activeProjectId); return this.selectProject(this.projects[(i + delta + this.projects.length) % this.projects.length].id); }
-  applyAppearance() { const a = this.appearance(); for (const p of this.panes.values()) { if (p.term.options.fontFamily !== a.fontFamily) p.term.options.fontFamily = a.fontFamily; p.term.options.fontSize = a.fontSize; p.term.options.lineHeight = a.lineHeight; p.term.options.theme = this.theme(); } document.fonts.ready.then(() => this.fit()); }
+  applyAppearance() { const a = this.appearance(); for (const p of this.panes.values()) { if (p.term.options.fontFamily !== a.fontFamily) p.term.options.fontFamily = a.fontFamily; p.term.options.fontSize = a.fontSize; p.term.options.lineHeight = a.lineHeight; p.term.options.theme = this.theme(); } document.fonts.load(`${a.fontSize}px ${a.fontFamily}`).then(() => { for (const p of this.panes.values()) p.term.refresh(0, p.term.rows - 1); this.fit(); }).catch(error => this.notify(error.message)); }
   find() {
     const p = this.activePane(); if (!p) return;
     if ($('.find-bar', p.el)) return $('.find-bar input', p.el).focus();

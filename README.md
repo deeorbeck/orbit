@@ -187,3 +187,9 @@ Settings → Terminal font includes Share Tech Mono (tech/coding), VT323 (retro)
 **⌘W** on Mac / **Ctrl+Shift+W** on Windows and Linux ends only the active pane. **⌘⇧W** / **Ctrl+Alt+Shift+W** ends the current tab and its panes. Live processes require confirmation. A local shell closes its pane on exit, even when its last command returned an error. Successful Codex/SSH exits also close their pane; failed Codex/SSH sessions retain their screen and restart action. **⌘Q** quits the GUI while preserving sessions. Closing a native window without ending its sessions uses **⌘⌥⇧W** / **Ctrl+Alt+W**.
 
 **Ctrl+Tab** and **Ctrl+Shift+Tab** work repeatedly while the terminal input has focus; these key events are intercepted before reaching the PTY. Ordinary Tab, Ctrl+C, Ctrl+D, Ctrl+W and Ctrl+Z retain their shell behavior.
+
+### Private fonts and multiline input
+
+Settings → **Import font…** accepts TTF, OTF, WOFF and WOFF2 files. Imported fonts stay in the private Orbit data folder and appear in the font selector in every window. They are not added to the public source distribution. Font changes apply immediately to existing panes.
+
+Use **Command+scroll** on macOS (**Control+scroll** elsewhere) to resize terminal text. **Shift+Enter** inserts a newline in shell input or Codex; plain **Enter** submits. The workspace footer has been removed to leave more room for terminal content.

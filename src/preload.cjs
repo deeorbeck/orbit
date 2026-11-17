@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('orbit', {
   close: (id) => ipcRenderer.invoke('terminal:close', id),
   save: (config) => ipcRenderer.invoke('config:save', config),
   editConfig: () => ipcRenderer.invoke('config:open'),
+  importFonts: () => ipcRenderer.invoke('font:import'),
+  onFonts: callback => subscribe('fonts:changed', callback),
   chooseDirectory: () => ipcRenderer.invoke('dialog:directory'),
   chooseIdentity: () => ipcRenderer.invoke('dialog:identity'),
   chooseWallpaper: () => ipcRenderer.invoke('dialog:wallpaper'),

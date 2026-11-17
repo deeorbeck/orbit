@@ -27,6 +27,19 @@ const autoReconnectRow = document.createElement('label'); autoReconnectRow.class
 autoReconnectRow.innerHTML = '<span><span data-i18n="Reconnect automatically">Reconnect automatically</span><small data-i18n="For a previously connected tmux session">For a previously connected tmux session</small></span><input type="checkbox" name="autoReconnect" class="switch" checked>';
 $('#session-name-field').before(autoReconnectRow);
 const colors = { copper: '#c9a078', blue: '#87a5c4', green: '#8cb3a2', violet: '#a89bc5' };
+let localFonts = [];
+const loadedLocalFonts = new Map();
+const allFontOptions = () => [...fontOptions, ...localFonts];
+async function loadLocalFonts(fonts) {
+  localFonts = fonts;
+  await Promise.all(fonts.map(font => {
+    if (!loadedLocalFonts.has(font.face)) {
+      const face = new FontFace(font.face, `url("${font.url}")`);
+      loadedLocalFonts.set(font.face, face.load().then(loaded => document.fonts.add(loaded)));
+    }
+    return loadedLocalFonts.get(font.face).catch(error => { localFonts = localFonts.filter(item => item.face !== font.face); notify(`${font.name}: ${error.message}`); });
+  }));
+}
 let config, home, wallpaperUrl, saving, toastTimer, platform = 'darwin', workspace, shortcutMap = {}, projectFilter = false, connectionsOnly = false, savedConnections = [];
 let paletteItems = [], paletteIndex = 0, editingServerId = null, editingProjectId = null, renamingTab = null;
 const newTab = options => workspace?.newTab(options);
@@ -67,10 +80,9 @@ function applyAppearance() {
   document.body.style.setProperty('--ui-font', theme.uiFont || '-apple-system, BlinkMacSystemFont, sans-serif');
   workspace?.applyAppearance();
   $('#font-preview').style.fontFamily = effectiveFont();
-  const selectedFont = extraFonts.find(font => font.fontFamily === effectiveFont());
+  const selectedFont = allFontOptions().find(font => font.fontFamily === effectiveFont());
   $('#font-preview').style.fontSize = `${Math.max(16, config.appearance.fontSize)}px`;
   $('#font-description').textContent = selectedFont?.monospace === false ? t('Display font · styled terminal text; fixed-width fonts align code more precisely.') : t('Monospace · aligned columns for code and terminal output.');
-  $('#font-status').textContent = `${effectiveFont().split(',')[0].replaceAll('"', '')} · ${a.fontSize} px`;
   syncSettings();
   requestAnimationFrame(fitVisible);
 }
@@ -90,7 +102,7 @@ function localizeUI() {
   const grid = $('.shortcut-grid'); grid.replaceChildren();
   for (const item of Object.values(shortcutMap)) { const name = document.createElement('span'); name.textContent = t(item.label); const key = document.createElement('kbd'); key.textContent = item.key; grid.append(name, key); }
   renderThemes(); renderFontOptions(); renderServers();
-  workspace?.renderProjects(); workspace?.renderTabs(); workspace?.updateFooter();
+  workspace?.renderProjects(); workspace?.renderTabs();
   if (workspace) for (const pane of workspace.panes.values()) workspace.renderPane(pane);
   if ($('#palette-dialog').open) renderPalette();
 }
@@ -172,8 +184,8 @@ function openProject(project) {
 function openRename(tab) { if (!tab) return; renamingTab = tab; $('#rename-name').value = tab.title; openDialog('#rename-dialog'); }
 function renderFontOptions() {
   const select = $('#font-family'); select.replaceChildren(); const auto = document.createElement('option'); auto.value = ''; auto.textContent = t("Theme font · automatic"); select.append(auto);
-  for (const font of fontOptions) { const option = document.createElement('option'); option.value = font.fontFamily; option.textContent = font.name + (font.style ? ' · ' + t(font.style) : ''); option.style.fontFamily = font.fontFamily; select.append(option); }
-  if (config.appearance.fontFamily && !fontOptions.some(font => font.fontFamily === config.appearance.fontFamily)) { const option = document.createElement('option'); option.value = config.appearance.fontFamily; option.textContent = t("Custom font"); select.append(option); }
+  for (const font of allFontOptions()) { const option = document.createElement('option'); option.value = font.fontFamily; option.textContent = font.name + (font.style ? ' · ' + t(font.style) : ''); option.style.fontFamily = font.fontFamily; select.append(option); }
+  if (config.appearance.fontFamily && !allFontOptions().some(font => font.fontFamily === config.appearance.fontFamily)) { const option = document.createElement('option'); option.value = config.appearance.fontFamily; option.textContent = t("Custom font"); select.append(option); }
   select.value = config.appearance.fontFamily;
 }
 function actions() {
@@ -238,7 +250,7 @@ $('#split-vertical-button').onclick = () => run(() => split('vertical'));
 $('#sidebar-button').onclick = () => handleAction('sidebar');
 $('#new-window').onclick = () => run(() => workspace.newWindow());
 $('#add-project').onclick = () => openProject();
-$('#settings-button').onclick = $('#status-settings').onclick = () => openDialog('#settings-dialog');
+$('#settings-button').onclick = () => openDialog('#settings-dialog');
 $('#palette-button').onclick = () => openPalette(false);
 $('#add-server').onclick = () => openServer();
 $('#edit-config').onclick = $('#settings-edit-config').onclick = () => run(() => api.editConfig());
@@ -266,6 +278,21 @@ $('#palette-input').onkeydown = event => {
   if (event.key === 'Enter' && paletteItems[paletteIndex]) { event.preventDefault(); const item = paletteItems[paletteIndex]; $('#palette-dialog').close(); run(item.run); }
 };
 $('#language').onchange = event => { config.language = event.target.value; localizeUI(); applyAppearance(); save(); };
+$('#import-font').onclick = () => run(async () => {
+  const imported = await api.importFonts(); if (!imported.length) return;
+  await loadLocalFonts((await api.init()).localFonts || []);
+  config.appearance.fontFamily = imported[0].fontFamily;
+  renderFontOptions(); applyAppearance(); save();
+});
+api.onFonts(fonts => run(async () => { await loadLocalFonts(fonts); renderFontOptions(); applyAppearance(); }));
+let wheelDelta = 0, wheelTime = 0;
+$('#terminal-area').addEventListener('wheel', event => {
+  if (!(platform === 'darwin' ? event.metaKey : event.ctrlKey) || !event.deltaY) return;
+  event.preventDefault(); event.stopPropagation();
+  const now = performance.now(); if (now - wheelTime > 180 || Math.sign(wheelDelta) !== Math.sign(event.deltaY)) wheelDelta = 0;
+  wheelTime = now; wheelDelta += event.deltaY * (event.deltaMode === 1 ? 20 : event.deltaMode === 2 ? 100 : 1);
+  if (Math.abs(wheelDelta) >= 20) { handleAction(wheelDelta < 0 ? 'fontUp' : 'fontDown'); wheelDelta = 0; }
+}, { capture: true, passive: false });
 $('#font-family').onchange = event => { config.appearance.fontFamily = event.target.value; applyAppearance(); save(); };
 $('#project-choose-folder').onclick = () => run(async () => { const cwd = await api.chooseDirectory(); if (!cwd) return; const form = $('#project-form'); form.elements.cwd.value = cwd; if (!form.elements.name.value) form.elements.name.value = cwd.split(/[\\/]/).filter(Boolean).pop(); });
 $('#project-form').onsubmit = event => { event.preventDefault(); run(async () => { const form = event.target; const project = await api.saveProject({ id: editingProjectId, name: form.elements.name.value, cwd: form.elements.cwd.value }); $('#project-dialog').close(); await workspace.selectProject(project.id); }); };
@@ -274,7 +301,7 @@ run(async () => {
   const initial = await api.init(); config = initial.config; home = initial.home; wallpaperUrl = initial.wallpaper; platform = initial.platform;
   document.documentElement.dataset.platform = platform;
   shortcutMap = Object.fromEntries(initial.shortcuts.map(s => [s.id, s]));
-  $('#version').textContent = initial.version;
+  await loadLocalFonts(initial.localFonts || []);
   const shortcutGrid = $('.shortcut-grid'); shortcutGrid.replaceChildren();
   for (const item of initial.shortcuts) { const name = document.createElement('span'); name.textContent = item.label; const key = document.createElement('kbd'); key.textContent = item.key; shortcutGrid.append(name, key); }
   $('#new-local kbd').textContent = shortcutMap.connections.key;
