@@ -27,7 +27,7 @@ function terminalEnv(version) {
   const extras = process.platform === 'win32' ? [path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'npm')] : [path.join(os.homedir(), '.local', 'bin'), '/opt/homebrew/bin', '/usr/local/bin'];
   env[pathKey] = [...extras, env[pathKey] || ''].join(path.delimiter);
   env.CLICOLOR = '1';
-  for (const key of ['NO_COLOR', 'FORCE_COLOR', 'CLICOLOR_FORCE', 'ELECTRON_RUN_AS_NODE', 'ORBIT_TEST_DATA']) delete env[key];
+  for (const key of ['NO_COLOR', 'NODE_DISABLE_COLORS', 'ANSI_COLORS_DISABLED', 'PYTHON_COLORS', 'FORCE_COLOR', 'CLICOLOR_FORCE', 'ELECTRON_RUN_AS_NODE', 'ORBIT_TEST_DATA']) delete env[key];
   return env;
 }
 // A running session service may predate the color fix. A private launcher also
@@ -36,7 +36,7 @@ function colorShell(config, directory) {
   if (process.platform === 'win32') return config;
   const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
   const file = path.join(directory, 'color-shell');
-  fs.writeFileSync(file, '#!/bin/sh\nexec /usr/bin/env -u NO_COLOR -u FORCE_COLOR -u CLICOLOR_FORCE CLICOLOR=1 TERM=xterm-256color COLORTERM=truecolor ' + quote(config.shell) + ' "$@"\n', { mode: 0o700 });
+  fs.writeFileSync(file, '#!/bin/sh\nexec /usr/bin/env -u NO_COLOR -u NODE_DISABLE_COLORS -u ANSI_COLORS_DISABLED -u PYTHON_COLORS -u FORCE_COLOR -u CLICOLOR_FORCE CLICOLOR=1 TERM=xterm-256color COLORTERM=truecolor ' + quote(config.shell) + ' "$@"\n', { mode: 0o700 });
   return { ...config, shell: file };
 }
 module.exports = { defaultShell, shellArgs, sshExecutable, terminalEnv, colorShell };

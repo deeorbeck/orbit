@@ -215,3 +215,5 @@ Right-click the sparkle button (or Commands → **Effect settings**) to open Atm
 **Trails per keystroke** controls each typing burst from 1–48 (default 16). **Match theme automatically** gives every bundled theme its own atmosphere, including Frost, Solar and Ink; custom themes follow their base theme and accent. **Match font automatically** and explicit styles are also available.
 
 To reopen an older no-color Codex conversation in a clean terminal, choose **Resume Codex** in the new-session picker or Commands. It opens the conversation picker without stopping existing sessions.
+
+Color support is shared by **all ordinary terminal tabs**. Typing `codex`, `git`, `node` or another ANSI-capable CLI into a normal shell uses the same color handling as dedicated launchers. Orbit clears inherited runner flags (`NO_COLOR`, `NODE_DISABLE_COLORS`, `ANSI_COLORS_DISABLED`, `PYTHON_COLORS`) for new shells while preserving normal TTY/pipeline behavior. Existing shell processes retain their previous environment; start a fresh terminal when upgrading an older retained shell.

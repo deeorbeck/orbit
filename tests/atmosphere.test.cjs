@@ -33,9 +33,11 @@ test('font profiles are deterministic, distinct and produce bounded edge destina
 });
 
 test('terminal environment removes inherited no-color flags without mutating the parent', () => {
-  const previous = process.env.NO_COLOR; process.env.NO_COLOR = '1';
-  try { assert.equal(terminalEnv('test').NO_COLOR, undefined); assert.equal(process.env.NO_COLOR, '1'); }
-  finally { if (previous === undefined) delete process.env.NO_COLOR; else process.env.NO_COLOR = previous; }
+  const flags = ['NO_COLOR', 'NODE_DISABLE_COLORS', 'ANSI_COLORS_DISABLED', 'PYTHON_COLORS'];
+  const previous = Object.fromEntries(flags.map(key => [key, process.env[key]]));
+  for (const key of flags) process.env[key] = key === 'PYTHON_COLORS' ? '0' : '1';
+  try { const child = terminalEnv('test'); for (const key of flags) { assert.equal(child[key], undefined); assert.notEqual(process.env[key], undefined); } }
+  finally { for (const key of flags) { if (previous[key] === undefined) delete process.env[key]; else process.env[key] = previous[key]; } }
 });
 
 test('color launcher fixes new shells from an older service without restarting it', { skip: process.platform === 'win32' }, () => {
@@ -43,7 +45,7 @@ test('color launcher fixes new shells from an older service without restarting i
   try {
     const shell = path.join(directory, "a shell's path"); fs.symlinkSync('/bin/sh', shell);
     const config = colorShell({ shell }, directory);
-    const result = execFileSync(config.shell, ['-c', 'printf "%s|%s|%s" "${NO_COLOR-unset}" "$TERM" "$COLORTERM"'], { encoding: 'utf8', env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' } });
-    assert.equal(result, 'unset|xterm-256color|truecolor');
+    const result = execFileSync(config.shell, ['-c', 'printf "%s|%s|%s|%s|%s|%s" "${NO_COLOR-unset}" "${NODE_DISABLE_COLORS-unset}" "${ANSI_COLORS_DISABLED-unset}" "${PYTHON_COLORS-unset}" "$TERM" "$COLORTERM"'], { encoding: 'utf8', env: { ...process.env, NO_COLOR: '1', NODE_DISABLE_COLORS: '1', ANSI_COLORS_DISABLED: '1', PYTHON_COLORS: '0', FORCE_COLOR: '0' } });
+    assert.equal(result, 'unset|unset|unset|unset|xterm-256color|truecolor');
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 });

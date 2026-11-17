@@ -1,3 +1,10 @@
+## Orbit Terminal 0.3.17 — colors for ordinary terminals and every CLI
+
+- Clear standard inherited Node/Python/no-color flags for all PTYs, including ordinary terminal tabs and commands typed manually.
+- Node, Git, Codex and other ANSI-capable CLIs share the same terminal color support; no Codex-specific rendering path is required.
+- Preserve TTY-aware detection so redirected/piped output remains plain instead of forcing escape sequences into data files.
+- Add an interactive shell regression test covering Node colors, Git diff colors and plain redirected output.
+
 ## Orbit Terminal 0.3.16 — denser trails and theme atmospheres
 
 - Set Trails per keystroke from 1–48. The default now emits 16 trails, with bounded rendering and consistent lifetimes.
