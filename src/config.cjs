@@ -8,7 +8,7 @@ const defaults = {
   version: 1,
   language: 'en',
   startupHome: true,
-  appearance: { fontSize: 14, fontFamily: '', wallpaper: true, wallpaperMode: 'contain', wallpaperOpacity: 0.28, dim: 0.25, sidebar: true, theme: 'graphite', effects: true, effectStyle: 'auto', effectIntensity: 0.35, typingEffects: true, ambientEffects: true },
+  appearance: { fontSize: 14, fontFamily: '', wallpaper: true, wallpaperMode: 'contain', wallpaperOpacity: 0.28, dim: 0.25, sidebar: true, theme: 'graphite', effects: true, effectStyle: 'auto', effectIntensity: 0.35, effectSpeed: 1, effectSize: 1, typingEffects: true, ambientEffects: true },
   shell: defaultShell(),
   startingDirectory: os.homedir(),
   codexCommand: 'codex',
@@ -29,7 +29,8 @@ function normalize(raw = {}) {
     appearance: {
       effects: a.effects !== false,
       effectStyle: ['auto', 'cosmic', 'matrix', 'circuit', 'phosphor', 'ember', 'aurora'].includes(a.effectStyle) ? a.effectStyle : 'auto',
-      effectIntensity: number(a.effectIntensity, 0.35, 0.1, 0.7),
+      effectIntensity: number(a.effectIntensity, 0.35, 0, 1),
+      effectSpeed: number(a.effectSpeed, 1, 0.25, 3), effectSize: number(a.effectSize, 1, 0.5, 2.5),
       typingEffects: a.typingEffects !== false, ambientEffects: a.ambientEffects !== false,
       fontSize: number(a.fontSize, 14, 10, 28),
       fontFamily: ['SFMono-Regular, Menlo, monospace', 'SFMono-Regular, Cascadia Mono, Menlo, Consolas, monospace'].includes(a.fontFamily) ? '' : text(a.fontFamily, '', 160),

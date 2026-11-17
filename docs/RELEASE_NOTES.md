@@ -1,3 +1,10 @@
+## Orbit Terminal 0.3.15 — visible, adjustable motion
+
+- Control Visibility (0–100%), Motion speed (0.25–3×) and Particle size (0.5–2.5×) independently in Atmosphere.
+- See changes in a live effect preview without typing into a terminal. Right-click the sparkle button to open these controls directly.
+- Speed adjusts the shared clock for ambient motion and existing typing trails immediately; circuit profiles now include moving pulses.
+- Widen the visibility range, strengthen subtle effects and stop animation entirely at zero visibility. Preferences survive restart.
+
 ## Orbit Terminal 0.3.14 — one home, immersive typing
 
 - Start with one home window; continue projects and preserved sessions when ready. Saved secondary windows reopen only when chosen. Click the Orbit wordmark to return home.

@@ -20,7 +20,9 @@ test('font profiles are deterministic, distinct and produce bounded edge destina
   assert.equal(normalize().startupHome, true);
   assert.equal(normalize({ startupHome: false }).startupHome, false);
   const config = normalize({ appearance: { effectIntensity: 100, effectStyle: 'unknown', effects: false } });
-  assert.equal(config.appearance.effectIntensity, 0.7); assert.equal(config.appearance.effectStyle, 'auto'); assert.equal(config.appearance.effects, false);
+  assert.equal(config.appearance.effectIntensity, 1);
+  const motion = normalize({ appearance: { effectSpeed: 99, effectSize: -1, effectIntensity: 0 } });
+  assert.equal(motion.appearance.effectSpeed, 3); assert.equal(motion.appearance.effectSize, 0.5); assert.equal(motion.appearance.effectIntensity, 0); assert.equal(config.appearance.effectStyle, 'auto'); assert.equal(config.appearance.effects, false);
 });
 
 test('terminal environment removes inherited no-color flags without mutating the parent', () => {

@@ -209,3 +209,5 @@ Font selection now styles the whole app window. Settings → **Atmosphere** prov
 The expand button or **⌘⇧F / Ctrl+Alt+F** enables **Terminal only**: no titlebar, sidebar, tabs or pane headers. **Escape** restores the previous view and fullscreen state.
 
 New terminal sessions remove inherited runner no-color flags. Applications that were already running keep their existing environment; reopen/resume an existing Codex process when you want it to pick up the color change. Stored plain text is not retroactively recolored.
+
+Right-click the sparkle button (or Commands → **Effect settings**) to open Atmosphere directly. **Visibility** controls brightness from 0–100%, **Motion speed** changes ambient and typing movement from 0.25–3×, and **Particle size** changes their scale from 0.5–2.5×. A live preview shows the result immediately. These settings are saved automatically.

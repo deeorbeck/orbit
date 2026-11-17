@@ -42,6 +42,9 @@ module.exports = (win, app) => {
         await until('document.querySelectorAll("[role=tab]").length === 3 && document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 3');
         assert.equal(await evaluate('document.querySelector("#folder-name").textContent'), 'QA project');
         assert.equal(await evaluate('document.body.dataset.theme'), expected.customThemeId, 'Reopening must use the saved custom default.');
+        assert.equal(await evaluate('window.__orbitEffectsSnapshot().speed'), 2.25);
+        assert.equal(await evaluate('window.__orbitEffectsSnapshot().visibility'), 0.8);
+        assert.equal(await evaluate('window.__orbitEffectsSnapshot().size'), 1.75);
         assert.equal(await evaluate('getComputedStyle(document.body).getPropertyValue("--terminal-bg").trim()'), '#132839');
         assert((await evaluate('getComputedStyle(document.querySelector(".pane-group:not([hidden]) .xterm-rows")).fontFamily')).includes(expected.customFontFace));
         assert.equal(await evaluate('!!document.querySelector(".pane-group:not([hidden]) .split-node.vertical")'), true);
@@ -93,6 +96,20 @@ module.exports = (win, app) => {
         await evaluate('document.querySelector("#effects-button").click()');
         assert.equal(await evaluate('window.__orbitEffectsSnapshot().rays'), 0, 'Turning effects off must clear live trails immediately.');
         await evaluate('document.querySelector("#effects-button").click()');
+        await evaluate('document.querySelector("#effects-button").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }))');
+        await until('document.querySelector("#settings-dialog").open && document.querySelector("#effect-preview-canvas").width > 0');
+        await evaluate(`(()=>{const slider=document.querySelector('#effect-speed');slider.value=25;slider.dispatchEvent(new Event('input'))})()`);
+        assert.equal(await evaluate('window.__orbitEffectsSnapshot().speed'), 0.25);
+        const slow = await evaluate('(()=>{window.__orbitEffectsFrame(0);const before=window.__orbitEffectsSnapshot().motionTime;window.__orbitEffectsFrame(100);return window.__orbitEffectsSnapshot().motionTime-before})()');
+        await evaluate(`(()=>{const slider=document.querySelector('#effect-speed');slider.value=225;slider.dispatchEvent(new Event('input'))})()`);
+        const fast = await evaluate('(()=>{window.__orbitEffectsFrame(0);const before=window.__orbitEffectsSnapshot().motionTime;window.__orbitEffectsFrame(100);return window.__orbitEffectsSnapshot().motionTime-before})()');
+        assert(fast > slow * 5, 'Speed must change the actual animation clock immediately.');
+        await evaluate(`(()=>{const slider=document.querySelector('#effect-intensity');slider.value=0;slider.dispatchEvent(new Event('input'))})()`);
+        assert.equal(await evaluate('window.__orbitEffectsSnapshot().enabled'), false, 'Zero visibility hides the effect and stops its animation.');
+        await evaluate(`(()=>{const slider=document.querySelector('#effect-intensity');slider.value=80;slider.dispatchEvent(new Event('input'));const size=document.querySelector('#effect-size');size.value=175;size.dispatchEvent(new Event('input'))})()`);
+        assert.equal(await evaluate('window.__orbitEffectsSnapshot().visibility'), 0.8); assert.equal(await evaluate('window.__orbitEffectsSnapshot().size'), 1.75);
+        if (process.env.ORBIT_EFFECT_CONTROLS_CAPTURE) { await evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))'); fs.writeFileSync(process.env.ORBIT_EFFECT_CONTROLS_CAPTURE, (await win.webContents.capturePage()).toPNG()); }
+        await evaluate('document.querySelector("#settings-dialog").close()');
         await evaluate('document.querySelector("#focus-mode-button").click()');
         await until('document.body.classList.contains("terminal-only")');
         assert.equal(await evaluate('getComputedStyle(document.querySelector(".titlebar")).display'), 'none');

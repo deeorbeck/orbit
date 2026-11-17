@@ -29,6 +29,7 @@ const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name] 
 function hydrateIcons(root = document) { root.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon); }); }
 hydrateIcons();
 const effects = new TerminalEffects($('#effects-canvas'));
+const effectPreview = new TerminalEffects($('#effect-preview-canvas'), { preview: true, exposeDebug: false });
 let focusMode = false;
 const autoReconnectRow = document.createElement('label'); autoReconnectRow.className = 'persistent-toggle';
 autoReconnectRow.innerHTML = '<span><span data-i18n="Reconnect automatically">Reconnect automatically</span><small data-i18n="For a previously connected tmux session">For a previously connected tmux session</small></span><input type="checkbox" name="autoReconnect" class="switch" checked>';
@@ -97,9 +98,10 @@ function applyAppearance() {
   document.body.style.setProperty('--ui-font', effectiveFont());
   document.body.style.setProperty('--orbit-font', effectiveFont());
   const profile = fontProfile(selectedFontName(), a.effectStyle); document.body.dataset.effectStyle = profile.style; document.body.dataset.effects = String(a.effects);
-  effects.configure({ appearance: a, fontName: selectedFontName(), fontFamily: effectiveFont(), accent: theme.accent, light: theme.light });
+  const effectOptions = { appearance: a, fontName: selectedFontName(), fontFamily: effectiveFont(), accent: theme.accent, light: theme.light };
+  effects.configure(effectOptions); effectPreview.configure(effectOptions);
   $('#effects-button').setAttribute('aria-pressed', String(a.effects));
-  $('#effects-button').title = t(a.effects ? 'Effects on · click to turn off' : 'Effects off · click to turn on') + ' · ' + (shortcutMap.effects?.key || '');
+  $('#effects-button').title = t(a.effects ? 'Effects on · click to turn off' : 'Effects off · click to turn on') + ' · ' + t('Right-click for effect settings') + ' · ' + (shortcutMap.effects?.key || '');
   $('#focus-mode-button').title = t('Terminal only · Esc to return') + ' · ' + (shortcutMap.focusMode?.key || '');
   workspace?.applyAppearance();
   $('#font-preview').style.fontFamily = effectiveFont();
@@ -159,6 +161,8 @@ function syncSettings() {
   $('#sidebar-toggle').checked = a.sidebar;
   $('#effects-toggle').checked = a.effects; $('#typing-effects').checked = a.typingEffects; $('#ambient-effects').checked = a.ambientEffects;
   $('#startup-home').checked = config.startupHome; assign('#effect-style', a.effectStyle); assign('#effect-intensity', Math.round(a.effectIntensity * 100)); $('#effect-output').textContent = Math.round(a.effectIntensity * 100) + '%';
+  assign('#effect-speed', Math.round(a.effectSpeed * 100)); $('#effect-speed-output').textContent = a.effectSpeed.toFixed(2).replace(/0$/, '') + '×';
+  assign('#effect-size', Math.round(a.effectSize * 100)); $('#effect-size-output').textContent = a.effectSize.toFixed(2).replace(/0$/, '') + '×';
   document.querySelectorAll('[data-theme]').forEach(el => el.classList.toggle('selected', el.dataset.theme === a.theme));
 }
 function renderServers() {
@@ -226,6 +230,7 @@ function actions() {
     { name: t("Add server"), icon: 'server', run: () => openServer() },
     ...config.servers.map(s => ({ name: `${s.name} · SSH`, icon: 'server', run: () => newTab({ serverId: s.id }) })),
     ...config.servers.map(s => ({ name: `${s.name} · SSH Codex`, icon: 'remoteCodex', run: () => newTab({ serverId: s.id, codex: true }) })),
+    { name: t("Effect settings"), icon: 'spark', run: openAtmosphere },
     { name: t("Edit config.json"), icon: 'code', run: () => api.editConfig() },
     { name: t("Import SSH config"), icon: 'download', run: importSSH },
     { name: t("Clear terminal"), icon: 'terminal', run: () => activePane()?.term.clear() },
@@ -247,6 +252,7 @@ async function importSSH() {
   const aliases = await api.importSSH(); const existing = new Set(config.servers.map(s => s.host)); const added = aliases.filter(s => !existing.has(s.host));
   config.servers.push(...added); config = await api.save(config); renderServers(); notify(added.length ? t('Imported {count} SSH profiles.', { count: added.length }) : t("No new SSH aliases found. Check ~/.ssh/config."));
 }
+function openAtmosphere() { if (!$('#settings-dialog').open) openDialog('#settings-dialog'); requestAnimationFrame(() => $('#atmosphere-settings').scrollIntoView({ block: 'start' })); }
 function handleAction(name) {
   const handlers = {
     new: () => newTab(), connections: openConnections, codex: () => newTab({ codex: true }), split: () => split('horizontal'), splitVertical: () => split('vertical'),
@@ -278,8 +284,10 @@ $('#sidebar-button').onclick = () => handleAction('sidebar');
 $('#home-button').onclick = () => run(async () => { await workspace.save(); workspace.initial.savedWindows = (await api.init()).savedWindows; workspace.showHome(); });
 $('#focus-mode-button').onclick = $('#settings-focus-mode').onclick = () => handleAction('focusMode');
 $('#effects-button').onclick = () => handleAction('effects');
+$('#effects-button').oncontextmenu = event => { event.preventDefault(); openAtmosphere(); };
 $('#effect-style').onchange = event => { config.appearance.effectStyle = event.target.value; applyAppearance(); save(); };
 $('#effect-intensity').oninput = event => { config.appearance.effectIntensity = Number(event.target.value) / 100; applyAppearance(); save(); };
+for (const [selector, key] of [['#effect-speed','effectSpeed'],['#effect-size','effectSize']]) $(selector).oninput = event => { config.appearance[key] = Number(event.target.value) / 100; applyAppearance(); save(); };
 $('#startup-home').onchange = event => { config.startupHome = event.target.checked; save(); };
 for (const [selector, key] of [['#effects-toggle','effects'],['#typing-effects','typingEffects'],['#ambient-effects','ambientEffects']]) $(selector).onchange = event => { config.appearance[key] = event.target.checked; applyAppearance(); save(); };
 $('#new-window').onclick = () => run(() => workspace.newWindow());

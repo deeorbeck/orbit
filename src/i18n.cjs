@@ -1,5 +1,11 @@
 // English message keys are also the fallback for future translations.
 const uz = {
+  "Right-click for effect settings": "Effekt sozlamalari uchun o‘ng tugmani bosing",
+  "Effect settings": "Effekt sozlamalari",
+  "Visibility": "Ko‘rinarlilik",
+  "Motion speed": "Harakat tezligi",
+  "Particle size": "Zarracha o‘lchami",
+  "Live preview": "Jonli namuna",
   "Your next session.": "Keyingi sessiyangiz.",
   "One quiet window. Your sessions are still here.": "Bitta sokin oyna. Sessiyalaringiz shu yerda saqlangan.",
   "Continue workspace": "Ish maydonini davom ettirish",
