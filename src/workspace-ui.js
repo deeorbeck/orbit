@@ -15,9 +15,10 @@ function replaceLeaf(node, id, replacement) {
 function makeButton(label, title, fn, className = 'icon-button') { const b = document.createElement('button'); b.className = className; b.textContent = label; b.title = title; b.setAttribute('aria-label', title); b.onclick = fn; return b; }
 
 export class WorkspaceUI {
-  constructor({ api, initial, icon, appearance, theme, notify, openProject, openRename }) {
-    Object.assign(this, { api, icon, appearance, theme, notify, openProject, openRename });
+  constructor({ api, initial, icon, appearance, theme, notify, openProject, openRename, onTyping }) {
+    Object.assign(this, { api, icon, appearance, theme, notify, openProject, openRename, onTyping });
     this.projects = initial.projects; this.window = initial.window; this.home = initial.home; this.platform = initial.platform;
+    this.initial = initial; this.inHome = true;
     this.activeProjectId = this.window.activeProjectId;
     this.panes = new Map(); this.closingIds = new Set(); this.states = new Map(); this.loads = new Map(); this.earlyData = new Map(); this.ready = false; this.navigation = 0;
     this.knownSessions = new Map(initial.sessions.map(s => [s.id, s]));
@@ -45,9 +46,25 @@ export class WorkspaceUI {
   }
   async save(projectId) { const value = this.snapshot(projectId); if (value) await this.api.saveWorkspace(value); }
   async init() {
+    if (this.initial.showHome) { this.showHome(); return; }
+    await this.resume();
+  }
+  showHome() {
+    this.inHome = true; document.body.classList.add('home-visible'); $('#home-screen').hidden = false;
+    this.renderProjects(); document.title = 'Orbit Terminal';
+    $('#home-continue').onclick = () => this.run(() => this.resume());
+    $('#home-terminal').onclick = () => this.run(() => this.newTab());
+    $('#home-codex').onclick = () => this.run(() => this.newTab({ codex: true }));
+    const list = $('#home-projects'); list.replaceChildren();
+    for (const project of this.projects) list.append(makeButton(project.name, project.cwd, () => this.run(() => this.selectProject(project.id)), 'home-project'));
+    const saved = $('#home-saved-windows'); saved.replaceChildren();
+    for (const window of this.initial.savedWindows || []) if (window.id !== this.window.id && window.tabs) saved.append(makeButton(t('Open saved workspace') + ' · ' + window.name, t('Sessions stay running'), () => this.run(() => this.api.restoreWindow(window.id)), 'home-project'));
+  }
+  async resume({ createIfEmpty = true } = {}) {
+    this.inHome = false; document.body.classList.remove('home-visible'); $('#home-screen').hidden = true;
     await this.ensureProject(this.activeProjectId);
     this.ready = true;
-    if (!this.tabs.length) await this.newTab({ cwd: this.window.initialCwd || this.project().cwd });
+    if (createIfEmpty && !this.tabs.length) await this.newTab({ cwd: this.window.initialCwd || this.project().cwd });
     this.selectVisible(); this.renderProjects(); await this.save();
   }
   ensureProject(id) { if (!this.loads.has(id)) this.loads.set(id, this.loadProject(id)); return this.loads.get(id); }
@@ -80,6 +97,7 @@ export class WorkspaceUI {
     if (!state.tabs.some(t => t.id === state.activeTabId)) state.activeTabId = state.tabs[0]?.id;
   }
   async selectProject(id) {
+    if (this.inHome) await this.resume({ createIfEmpty: false });
     if (!this.projects.some(p => p.id === id)) return;
     const navigation = ++this.navigation;
     await this.save();
@@ -156,6 +174,13 @@ export class WorkspaceUI {
     this.panes.set(info.id, pane);
     term.onData(data => { if (pane.info.status === 'running') this.api.write(info.id, data); });
     term.onTitleChange(title => { el.title = title; });
+    term.onKey(({ domEvent: event }) => {
+      if (event.isComposing || event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1) return;
+      const screen = $('.xterm-screen', el).getBoundingClientRect(), area = $('#terminal-area').getBoundingClientRect();
+      const row = term.buffer.active.cursorY + term.buffer.active.baseY - term.buffer.active.viewportY;
+      if (row < 0 || row >= term.rows) return;
+      this.onTyping?.({ x: screen.left - area.left + (term.buffer.active.cursorX + 0.5) * screen.width / term.cols, y: screen.top - area.top + (row + 0.5) * screen.height / term.rows });
+    });
     term.attachCustomKeyEventHandler(e => {
       const mod = this.platform === 'darwin' ? e.metaKey : e.ctrlKey;
       if (e.key === 'Enter' && e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey && !e.isComposing) {
@@ -246,6 +271,7 @@ export class WorkspaceUI {
     for (const id of leafIds(tab.layout)) { const p = this.panes.get(id); if (!p || p.mount.clientWidth < 30 || p.mount.clientHeight < 30) continue; try { const atBottom = p.term.buffer.active.viewportY >= p.term.buffer.active.baseY; p.fit.fit(); if (atBottom) p.term.scrollToBottom(); if (p.info.cols !== p.term.cols || p.info.rows !== p.term.rows) { p.info.cols = p.term.cols; p.info.rows = p.term.rows; this.api.resize(id, p.term.cols, p.term.rows); } } catch {} }
   }
   async newTab(options = {}) {
+    if (this.inHome) await this.resume({ createIfEmpty: false });
     const projectId = this.activeProjectId, state = this.state();
     const source = this.activePane();
     const info = await this.api.create({ ...options, projectId, inheritFrom: options.cwd ? null : source?.id });
@@ -315,7 +341,7 @@ export class WorkspaceUI {
   cycleTab(delta) { const i = this.tabs.findIndex(t => t.id === this.state().activeTabId); if (this.tabs.length) this.selectTab(this.tabs[(i + delta + this.tabs.length) % this.tabs.length].id); }
   cyclePane(delta) { const ids = leafIds(this.activeTab()?.layout), i = ids.indexOf(this.activePane()?.id); if (ids.length) this.focusPane(ids[(i + delta + ids.length) % ids.length]); }
   cycleProject(delta) { const i = this.projects.findIndex(p => p.id === this.activeProjectId); return this.selectProject(this.projects[(i + delta + this.projects.length) % this.projects.length].id); }
-  applyAppearance() { const a = this.appearance(); for (const p of this.panes.values()) { if (p.term.options.fontFamily !== a.fontFamily) p.term.options.fontFamily = a.fontFamily; p.term.options.fontSize = a.fontSize; p.term.options.lineHeight = a.lineHeight; p.term.options.theme = this.theme(); } document.fonts.load(`${a.fontSize}px ${a.fontFamily}`).then(() => { for (const p of this.panes.values()) p.term.refresh(0, p.term.rows - 1); this.fit(); }).catch(error => this.notify(error.message)); }
+  applyAppearance() { const a = this.appearance(); for (const p of this.panes.values()) { if (p.term.options.fontFamily !== a.fontFamily) p.term.options.fontFamily = a.fontFamily; p.term.options.fontSize = a.fontSize; p.term.options.lineHeight = a.lineHeight; p.term.options.cursorStyle = a.cursorStyle || 'bar'; p.term.options.cursorWidth = a.cursorWidth || 2; p.term.options.theme = this.theme(); } document.fonts.load(`${a.fontSize}px ${a.fontFamily}`).then(() => { for (const p of this.panes.values()) p.term.refresh(0, p.term.rows - 1); this.fit(); }).catch(error => this.notify(error.message)); }
   find() {
     const p = this.activePane(); if (!p) return;
     if ($('.find-bar', p.el)) return $('.find-bar input', p.el).focus();

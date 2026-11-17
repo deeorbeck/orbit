@@ -1,4 +1,4 @@
-// All ten complete themes live here. Edit a palette, then run npm run package.
+// Built-in designs. Private editable themes are merged from config below.
 const themes = {
   graphite: { name: 'Graphite', description: 'Orbit original', base: '#111519', side: '#151a1f', bar: '#181d22', terminal: '#0e1318', text: '#dce0e4', muted: '#98a4af', faint: '#7d8a96', accent: '#d6a574', foreground: '#d8e0e7' },
   coding: { name: 'Coding', description: 'Code, no distractions', base: '#0d1117', side: '#10161d', bar: '#161e27', terminal: '#0a0f14', text: '#d3e3d8', muted: '#9bb6a6', faint: '#769184', accent: '#8dcea4', foreground: '#d1e9d9', font: 'SFMono-Regular, Menlo, monospace' },

@@ -27,6 +27,8 @@ const definitions = [
   ['palette', "Commands", 'Cmd+K', 'Ctrl+Shift+K'],
   ['find', "Search terminal", 'Cmd+F', 'Ctrl+Shift+F'],
   ['sidebar', "Sidebar", 'Cmd+B', 'Ctrl+Shift+B'],
+  ['focusMode', 'Terminal only', 'Cmd+Shift+F', 'Ctrl+Alt+F'],
+  ['effects', 'Toggle effects', 'Cmd+Alt+E', 'Ctrl+Alt+E'],
   ['settings', "Settings", 'Cmd+,', 'Ctrl+,'],
 ];
 function shortcuts(platform = process.platform) {

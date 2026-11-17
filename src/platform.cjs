@@ -26,7 +26,17 @@ function terminalEnv(version) {
   const pathKey = Object.keys(env).find(key => key.toUpperCase() === 'PATH') || 'PATH';
   const extras = process.platform === 'win32' ? [path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'npm')] : [path.join(os.homedir(), '.local', 'bin'), '/opt/homebrew/bin', '/usr/local/bin'];
   env[pathKey] = [...extras, env[pathKey] || ''].join(path.delimiter);
-  for (const key of ['ELECTRON_RUN_AS_NODE', 'ORBIT_TEST_DATA']) delete env[key];
+  env.CLICOLOR = '1';
+  for (const key of ['NO_COLOR', 'FORCE_COLOR', 'CLICOLOR_FORCE', 'ELECTRON_RUN_AS_NODE', 'ORBIT_TEST_DATA']) delete env[key];
   return env;
 }
-module.exports = { defaultShell, shellArgs, sshExecutable, terminalEnv };
+// A running session service may predate the color fix. A private launcher also
+// clears inherited runner flags without replacing or stopping any existing PTY.
+function colorShell(config, directory) {
+  if (process.platform === 'win32') return config;
+  const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
+  const file = path.join(directory, 'color-shell');
+  fs.writeFileSync(file, '#!/bin/sh\nexec /usr/bin/env -u NO_COLOR -u FORCE_COLOR -u CLICOLOR_FORCE CLICOLOR=1 TERM=xterm-256color COLORTERM=truecolor ' + quote(config.shell) + ' "$@"\n', { mode: 0o700 });
+  return { ...config, shell: file };
+}
+module.exports = { defaultShell, shellArgs, sshExecutable, terminalEnv, colorShell };

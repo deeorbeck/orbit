@@ -19,11 +19,21 @@ module.exports = (win, app) => {
   win.webContents.once('did-finish-load', async () => {
     let client;
     try {
-      await until('!!window.__orbitWorkspaceSnapshot?.() && !!document.querySelector(".xterm-helper-textarea")');
+      await until(process.env.ORBIT_SMOKE_PHASE === 'home' ? '!document.querySelector("#home-screen").hidden' : '!!window.__orbitWorkspaceSnapshot?.() && !!document.querySelector(".xterm-helper-textarea")');
       await evaluate('window.__smokeExits=[];window.__smokeRemoved=[];window.orbit.onExit(e=>window.__smokeExits.push(e));window.orbit.onRemoved(e=>window.__smokeRemoved.push(e));true');
       const directory = app.getPath('userData'), stateFile = path.join(directory, 'smoke-state.json');
       client = await new SessionClient(directory).connect();
-      if (process.env.ORBIT_SMOKE_PHASE === 'restore') {
+      if (process.env.ORBIT_SMOKE_PHASE === 'home') {
+        const expected = JSON.parse(fs.readFileSync(stateFile, 'utf8')), sessions = await client.request('list');
+        assert.equal(BrowserWindow.getAllWindows().length, 1, 'Startup must open exactly one home window.');
+        assert.equal(sessions.length, expected.sessions.length, 'Opening home must not start a new shell.');
+        for (const prior of expected.sessions) assert.equal(sessions.find(s => s.id === prior.id)?.pid, prior.pid);
+        assert.equal(await evaluate('document.querySelectorAll("#workspaces .terminal-pane").length'), 0);
+        await evaluate('document.querySelector("#home-continue").click()');
+        await until('!!window.__orbitWorkspaceSnapshot?.() && document.querySelectorAll("[role=tab]").length === 3');
+        assert.equal(await evaluate('document.body.dataset.theme'), expected.customThemeId);
+        console.log('ORBIT_HOME_PASS: one home window, no new PTY, saved tabs and processes available on Continue');
+      } else if (process.env.ORBIT_SMOKE_PHASE === 'restore') {
         const expected = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
         const sessions = await client.request('list');
         assert.equal(sessions.length, expected.sessions.length, 'Reopening must not create duplicate shells.');
@@ -59,6 +69,7 @@ module.exports = (win, app) => {
           await evaluate(`document.querySelector('#font-family').value = ${JSON.stringify(font.fontFamily)}; document.querySelector('#font-family').dispatchEvent(new Event('change'))`);
           await until(`getComputedStyle(document.querySelector('.xterm-rows')).fontFamily.includes(${JSON.stringify(font.face || font.name)})`);
           assert((await evaluate('document.querySelector("#font-preview").style.fontFamily')).includes(font.face || font.name));
+          assert((await evaluate('getComputedStyle(document.querySelector(".wordmark")).fontFamily')).includes(font.face || font.name), 'The selected font must also style the Orbit wordmark.');
           assert(await evaluate(`!![...document.querySelector('#font-family').options].find(option => option.value === ${JSON.stringify(font.fontFamily)})`));
         }
         await evaluate('document.querySelector("#font-family").value="";document.querySelector("#font-family").dispatchEvent(new Event("change"))');
@@ -71,12 +82,42 @@ module.exports = (win, app) => {
         await until(`parseFloat(getComputedStyle(document.querySelector('.xterm-rows')).fontSize) === ${sizeBefore + 1}`);
         await evaluate(`document.querySelector('#terminal-area').dispatchEvent(new WheelEvent('wheel', { deltaY: 100, ${process.platform === 'darwin' ? 'metaKey' : 'ctrlKey'}: true, bubbles: true, cancelable: true }))`);
         await until(`Number(document.querySelector('#font-size').value) === ${sizeBefore}`);
+        await evaluate('document.querySelector("#effects-button").click()');
+        assert.equal(await evaluate('window.__orbitEffectsSnapshot().enabled'), false);
+        assert.equal(await evaluate('window.__orbitEffectsSnapshot().rays'), 0);
+        await evaluate('document.querySelector("#effects-button").click()');
+        await evaluate('document.querySelector(".pane-group:not([hidden]) .xterm-helper-textarea").focus()');
+        win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'a' }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'a' });
+        if (!(await evaluate('window.__orbitEffectsSnapshot().reducedMotion'))) { try { await until('window.__orbitEffectsSnapshot().rays > 0'); } catch (error) { throw new Error(error.message + ' effects=' + JSON.stringify(await evaluate('window.__orbitEffectsSnapshot()'))); } }
+        win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'u', modifiers: ['control'] }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'u', modifiers: ['control'] });
+        await evaluate('document.querySelector("#effects-button").click()');
+        assert.equal(await evaluate('window.__orbitEffectsSnapshot().rays'), 0, 'Turning effects off must clear live trails immediately.');
+        await evaluate('document.querySelector("#effects-button").click()');
+        await evaluate('document.querySelector("#focus-mode-button").click()');
+        await until('document.body.classList.contains("terminal-only")');
+        assert.equal(await evaluate('getComputedStyle(document.querySelector(".titlebar")).display'), 'none');
+        assert.equal(await evaluate('getComputedStyle(document.querySelector(".tabs-bar")).display'), 'none');
+        assert.equal(await evaluate('getComputedStyle(document.querySelector(".pane-label")).display'), 'none');
+        win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+        await until('!document.body.classList.contains("terminal-only")');
+        if (process.env.ORBIT_ATMOSPHERE_CAPTURE) {
+          await evaluate(`document.querySelector('[data-theme="futuristic"]').click(); document.querySelector('#font-family').value='"Orbitron", monospace'; document.querySelector('#font-family').dispatchEvent(new Event('change'))`);
+          win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'a' }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'a' });
+          await evaluate('window.__orbitEffectsFrame(180)');
+          await evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+          fs.writeFileSync(process.env.ORBIT_ATMOSPHERE_CAPTURE, (await win.webContents.capturePage()).toPNG());
+          win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'u', modifiers: ['control'] }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'u', modifiers: ['control'] });
+        }
+
         const projectFolder = path.join(directory, 'QA project'), childFolder = path.join(projectFolder, 'active-folder'); fs.mkdirSync(childFolder, { recursive: true });
         await evaluate('document.querySelector("#add-project").click()');
         await evaluate(`document.querySelector('#project-form').elements.name.value = 'QA project'; document.querySelector('#project-form').elements.cwd.value = ${JSON.stringify(projectFolder)}; document.querySelector('#project-form').requestSubmit()`);
         await until('document.querySelector("#folder-name").textContent === "QA project" && document.querySelectorAll("[role=tab]").length === 1');
         await until('document.querySelector(".pane-group:not([hidden]) .xterm-screen").innerText.trim().length > 0');
         const originalId = await evaluate('document.querySelector(".pane-group:not([hidden]) .terminal-pane").dataset.sessionId');
+        await client.request('write', { id: originalId, data: process.platform === 'win32' ? "[Console]::Write([char]27+'[38;2;40;210;120mCOLOR_OK'+[char]27+'[0m')\r" : "printf '\\033[38;2;40;210;120mCOLOR_OK\\033[0m\\n'\r" });
+        await until('document.querySelector(".pane-group:not([hidden]) .xterm-screen").innerText.includes("COLOR_OK")');
+        try { await until('[...document.querySelectorAll(".pane-group:not([hidden]) .xterm-rows span")].some(el => el.textContent.trim() && getComputedStyle(el).color === "rgb(40, 210, 120)")'); } catch (error) { throw new Error(error.message + ' spans=' + JSON.stringify(await evaluate('[...document.querySelectorAll(".pane-group:not([hidden]) .xterm-rows span")].map(el => ({text:el.textContent,color:getComputedStyle(el).color}))'))); }
         if (process.platform === 'darwin') {
           await win.webContents.insertText("printf '\\nSHIFT_%s\\n' ENTER_OK;");
           win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['shift'] });
@@ -211,7 +252,7 @@ module.exports = (win, app) => {
         assert.equal(sessions.length, 7, 'Expected seven independent processes across projects and windows.');
         fs.writeFileSync(stateFile, JSON.stringify({ originalId, childFolder, customThemeId, customFontFace: customFont.face, sessions: sessions.map(({ id, pid }) => ({ id, pid })) }));
         if (process.env.ORBIT_SMOKE_CAPTURE) { const image = await win.webContents.capturePage(); fs.writeFileSync(process.env.ORBIT_SMOKE_CAPTURE, image.toPNG()); }
-        console.log('ORBIT_SMOKE_PASS: custom theme create/edit/cancel/delete, imported fonts, zoom, Shift+Enter and native navigation');
+        console.log('ORBIT_SMOKE_PASS: truecolor, unified fonts, bounded typing effects, terminal-only/Esc, themes and navigation');
       }
       client.disconnect(); app.quit();
     } catch (error) {

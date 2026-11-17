@@ -199,3 +199,13 @@ Use **Command+scroll** on macOS (**Control+scroll** elsewhere) to resize termina
 Open **Settings → New theme** to copy the current appearance. Choose terminal/interface colors, font, size, line height and light/dark mode with a live preview. **Save & use as default** saves the theme and uses it on the next launch. Select a saved theme and choose **Edit theme** to update it. Cancel leaves your current theme unchanged; deleting a custom theme requires a second click.
 
 Custom themes live in `config.json` under `customThemes`. The selected `appearance.theme` is the startup choice. They survive app updates and also support privately imported fonts.
+
+### Home, atmosphere and terminal-only mode
+
+Orbit starts with one home window. **Continue workspace** attaches your saved tabs and processes; secondary saved windows open only when selected. Click the Orbit wordmark to return home. Settings → **Start with one home window** controls this behavior.
+
+Font selection now styles the whole app window. Settings → **Atmosphere** provides font-matched cosmic/matrix/circuit/phosphor/ember/aurora profiles, intensity and independent ambient/typing layers. The toolbar sparkle button or **⌘⌥E / Ctrl+Alt+E** toggles all effects. Abstract typing trails stay behind text, are bounded at the window edges, and never display your keystrokes. Reduced motion is respected.
+
+The expand button or **⌘⇧F / Ctrl+Alt+F** enables **Terminal only**: no titlebar, sidebar, tabs or pane headers. **Escape** restores the previous view and fullscreen state.
+
+New terminal sessions remove inherited runner no-color flags. Applications that were already running keep their existing environment; reopen/resume an existing Codex process when you want it to pick up the color change. Stored plain text is not retroactively recolored.

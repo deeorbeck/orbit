@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('orbit', {
   cwd: id => ipcRenderer.invoke('terminal:cwd', id),
   restart: id => ipcRenderer.invoke('terminal:restart', id),
   cancelRetry: id => ipcRenderer.invoke('terminal:cancelRetry', id),
+  focusMode: enabled => ipcRenderer.invoke('window:focus-mode', enabled),
+  restoreWindow: id => ipcRenderer.invoke('window:restore', id),
   newWindow: projectId => ipcRenderer.invoke('window:new', projectId),
   saveWorkspace: value => ipcRenderer.invoke('workspace:save', value),
   saveProject: value => ipcRenderer.invoke('project:save', value),

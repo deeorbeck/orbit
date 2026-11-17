@@ -1,3 +1,12 @@
+## Orbit Terminal 0.3.14 — one home, immersive typing
+
+- Start with one home window; continue projects and preserved sessions when ready. Saved secondary windows reopen only when chosen. Click the Orbit wordmark to return home.
+- Prevent inherited NO_COLOR runner flags from disabling colors in new terminal/Codex sessions, including when an older session service is still running.
+- Apply the selected font throughout Orbit, including branding, controls, tabs and pane headers.
+- Font-matched cosmic stars, matrix streams, circuit traces, phosphor, ember and aurora ambience; abstract typing trails travel from the cursor toward window edges behind terminal text.
+- Toggle effects from the toolbar or Settings; adjust intensity and ambient/typing layers independently. Rendering pauses when hidden or unfocused and respects reduced motion.
+- Terminal only mode hides all chrome and enters fullscreen. Escape restores the prior view without being sent to the terminal.
+
 ## Orbit Terminal 0.3.13 — your own themes
 
 - Create a theme from the current appearance in Settings, preview colors live, and edit saved themes.

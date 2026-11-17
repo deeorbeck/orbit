@@ -8,7 +8,7 @@ const data = fs.mkdtempSync(path.join(os.tmpdir(), 'orbit-smoke-'));
 const testHome = path.join(data, 'home'); fs.mkdirSync(testHome);
 // Isolate UI regression checks from user shell startup hooks and their locks.
 const { defaults, saveConfig } = require('../src/config.cjs');
-saveConfig(path.join(data, 'config.json'), { ...defaults, shell: process.platform === 'win32' ? defaults.shell : '/bin/sh' });
+saveConfig(path.join(data, 'config.json'), { ...defaults, startupHome: false, shell: process.platform === 'win32' ? defaults.shell : '/bin/sh' });
 const { importFonts } = require('../src/local-fonts.cjs');
 importFonts(data, [path.join(root, 'assets/fonts/ibmplexmono.woff2'), ...JSON.parse(process.env.ORBIT_TEST_FONT_FILES || '[]')]);
 let executable = require('electron');
@@ -28,7 +28,7 @@ function launch(phase) {
   });
 }
 (async () => {
-  try { await launch('create'); await new Promise(resolve => setTimeout(resolve, 500)); await launch('restore'); }
+  try { await launch('create'); await new Promise(resolve => setTimeout(resolve, 500)); await launch('restore'); const saved = JSON.parse(fs.readFileSync(path.join(data, 'config.json'))); saveConfig(path.join(data, 'config.json'), { ...saved, startupHome: true }); await launch('home'); }
   catch (error) { console.error(error.message); process.exitCode = 1; }
   finally {
     try { const client = await new SessionClient(data).connect(); await client.request('shutdown'); client.disconnect(); await new Promise(resolve => setTimeout(resolve, 300)); } catch {}

@@ -1,3 +1,4 @@
+const { colorShell } = require('./platform.cjs');
 const { listFonts, importFonts, fontDirectory } = require('./local-fonts.cjs');
 const { inputAction } = require('./input-shortcuts.cjs');
 const { translate } = require('./i18n.cjs');
@@ -36,15 +37,17 @@ function safeHandle(channel, fn) {
     return fn(win, ...args);
   });
 }
-function buildWindow(state) {
+function buildWindow(state, { home = false } = {}) {
   const chrome = process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 18, y: 20 } } : {};
   const bounds = state.bounds || {};
   const positionValid = Number.isFinite(bounds.x) && Number.isFinite(bounds.y) && screen.getAllDisplays().some(d => bounds.x >= d.bounds.x - 100 && bounds.x < d.bounds.x + d.bounds.width && bounds.y >= d.bounds.y - 50 && bounds.y < d.bounds.y + d.bounds.height);
   const win = new BrowserWindow({ ...(process.env.ORBIT_SMOKE_BACKGROUND ? { show: false } : {}), width: Math.max(740, Math.min(2400, bounds.width || 1320)), height: Math.max(480, Math.min(1600, bounds.height || 860)), ...(positionValid ? { x: bounds.x, y: bounds.y } : {}), minWidth: 740, minHeight: 480, title: 'Orbit Terminal', backgroundColor: '#111519', icon: path.join(__dirname, '..', 'assets', 'orbit.png'), ...chrome, webPreferences: { ...(process.env.ORBIT_SMOKE_BACKGROUND ? { backgroundThrottling: false } : {}), preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false } });
+  win.orbitHome = home;
   windows.set(state.id, win);
   if (process.env.ORBIT_SMOKE_TEST) win.webContents.on('console-message', details => { if (details.level === 'error') console.log('ORBIT_RENDERER:', details.message); });
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown' && input.type !== 'keyUp') return;
+    if (input.key === 'Escape' && win.orbitFocus) { event.preventDefault(); if (input.type === 'keyDown') win.webContents.send('app:action', 'exitFocus'); return; }
     const name = inputAction({ ...input, type: 'keyDown' });
     if (!name) return;
     event.preventDefault();
@@ -62,7 +65,7 @@ function buildWindow(state) {
   win.on('close', event => {
     if (closing) return;
     event.preventDefault(); closing = true;
-    const bounds = win.getBounds();
+    const bounds = win.isFullScreen() ? win.getNormalBounds() : win.getBounds();
     Promise.race([win.webContents.executeJavaScript('window.__orbitWorkspaceSnapshot?.()'), new Promise(resolve => setTimeout(() => resolve(null), 1500))]).then(snapshot => {
       if (snapshot) workspaces.saveWindow(state.id, { ...snapshot, bounds });
       else workspaces.saveWindow(state.id, { bounds });
@@ -101,12 +104,31 @@ else {
       const bytes = fs.readFileSync(wallpaperFile);
       return bytes.subarray(0, 512).toString().includes('<svg') ? new Response(bytes, { headers: { 'Content-Type': 'image/svg+xml' } }) : net.fetch(pathToFileURL(wallpaperFile).href);
     });
-    safeHandle('app:init', async win => ({ config, home: os.homedir(), configFile, platform: process.platform, wallpaper: 'orbit://wallpaper/image', localFonts: listFonts(app.getPath('userData')), version: app.getVersion(), projects: workspaces.state.projects, window: workspaces.window(windowId(win)), sessions: await backend.request('list'), shortcuts: shortcuts() }));
+    safeHandle('app:init', async win => ({ config, home: os.homedir(), configFile, platform: process.platform, wallpaper: 'orbit://wallpaper/image', localFonts: listFonts(app.getPath('userData')), version: app.getVersion(), projects: workspaces.state.projects, window: workspaces.window(windowId(win)), showHome: !!win.orbitHome, testing: !!process.env.ORBIT_TEST_DATA, savedWindows: workspaces.state.windows.map(w => ({ id: w.id, name: workspaces.project(w.activeProjectId)?.name || 'Workspace', tabs: Object.values(w.projects).reduce((n, p) => n + p.tabs.length, 0) })), sessions: await backend.request('list'), shortcuts: shortcuts() }));
+    safeHandle('window:restore', (_win, id) => {
+      const state = workspaces.window(id); if (!state) throw new Error('Workspace not found.');
+      if (windows.has(id)) windows.get(id).focus(); else buildWindow(state);
+      return true;
+    });
     safeHandle('window:new', (win, value) => {
       if (workspaces.state.windows.length >= 12) throw new Error(tr("Up to 12 Orbit windows can be saved. Use tabs and panes in an existing window."));
       const state = workspaces.newWindow(value?.projectId || workspaces.window(windowId(win)).activeProjectId);
       if (value?.cwd && path.isAbsolute(value.cwd) && fs.existsSync(value.cwd) && fs.statSync(value.cwd).isDirectory()) { state.initialCwd = value.cwd; workspaces.save(); }
       buildWindow(state); return state.id;
+    });
+    const focusStates = new WeakMap();
+    safeHandle('window:focus-mode', (win, enabled) => {
+      win.orbitFocus = !!enabled;
+      if (enabled && !focusStates.has(win)) {
+        focusStates.set(win, win.isFullScreen());
+        if (!process.env.ORBIT_TEST_DATA) win.setFullScreen(true);
+        if (process.platform === 'darwin') win.setWindowButtonVisibility(false);
+      } else if (!enabled && focusStates.has(win)) {
+        if (!process.env.ORBIT_TEST_DATA) win.setFullScreen(focusStates.get(win));
+        if (process.platform === 'darwin') win.setWindowButtonVisibility(true);
+        focusStates.delete(win);
+      }
+      return !!enabled;
     });
     safeHandle('workspace:save', (win, value) => workspaces.saveWindow(windowId(win), value));
     safeHandle('project:save', (_win, value) => { const p = workspaces.upsertProject(value); broadcast('projects:changed', workspaces.state.projects); return p; });
@@ -126,7 +148,7 @@ else {
         else { serverId = connection.id; sessionConfig = normalize({ ...config, servers: [...config.servers, { id: serverId, name: connection.name, host: connection.host, port: 22, persistent: false, autoReconnect: false }] }); }
       }
       const sourceRemoteSession = sourceSession?.serverId === serverId ? sourceSession?.sessionName : null;
-      return backend.request('create', { id: randomUUID(), options: { projectId: project.id, windowId: windowId(win), serverId, aliasName, sourceRemoteSession, codex: !!options.codex, cwd, config: sessionConfig } });
+      return backend.request('create', { id: randomUUID(), options: { projectId: project.id, windowId: windowId(win), serverId, aliasName, sourceRemoteSession, codex: !!options.codex, cwd, config: colorShell(sessionConfig, app.getPath('userData')) } });
     });
     safeHandle('font:import', async win => {
       const result = await dialog.showOpenDialog(win, { title: 'Import terminal fonts', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Fonts', extensions: ['ttf', 'otf', 'woff', 'woff2'] }] });
@@ -148,7 +170,7 @@ else {
         const connection = (await refreshCatalog()).find(c => c.id === session.serverId);
         if (connection) sessionConfig = normalize({ ...config, servers: [...config.servers, { id: connection.id, name: connection.name, host: connection.host, port: 22, persistent: false, autoReconnect: false }] });
       }
-      return backend.request('restart', { id, config: sessionConfig });
+      return backend.request('restart', { id, config: colorShell(sessionConfig, app.getPath('userData')) });
     });
     safeHandle('terminal:cancelRetry', (_win, id) => backend.request('cancelRetry', { id }));
     safeHandle('terminal:close', async (win, ids) => {
@@ -191,13 +213,13 @@ else {
       { label: tr('Project'), submenu: ['projects', 'addProject', 'nextProject', 'previousProject', 'newWindow'].map(entry) },
       { label: tr('Session'), submenu: ['new', 'connections', 'codex', 'split', 'splitVertical', 'nextPane', 'previousPane', 'paneLeft', 'paneRight', 'paneUp', 'paneDown', 'next', 'previous', 'previousTabBracket', 'nextTabBracket', ...Array.from({ length: 9 }, (_, i) => 'tab' + (i + 1)), 'rename', 'close', 'closeTab', 'closeWindow'].map(entry) },
       { label: tr('Edit'), submenu: [{ role: 'undo', accelerator: process.platform === 'darwin' ? 'Cmd+Z' : 'Ctrl+Alt+Z' }, { role: 'redo', accelerator: process.platform === 'darwin' ? 'Cmd+Shift+Z' : 'Ctrl+Alt+Shift+Z' }, ...['cut', 'copy', 'paste', 'selectAll'].map((role, i) => ({ role, accelerator: `${process.platform === 'darwin' ? 'Cmd' : 'Ctrl+Shift'}+${['X', 'C', 'V', 'A'][i]}` })), entry('find')] },
-      { label: tr('View'), submenu: [entry('palette'), entry('sidebar'), { role: 'togglefullscreen' }, { label: tr('Increase font'), accelerator: 'CmdOrCtrl+=', click: () => action('fontUp') }, { label: tr('Decrease font'), accelerator: 'CmdOrCtrl+-', click: () => action('fontDown') }] },
+      { label: tr('View'), submenu: [entry('palette'), entry('sidebar'), entry('focusMode'), entry('effects'), { role: 'togglefullscreen' }, { label: tr('Increase font'), accelerator: 'CmdOrCtrl+=', click: () => action('fontUp') }, { label: tr('Decrease font'), accelerator: 'CmdOrCtrl+-', click: () => action('fontDown') }] },
       { role: 'windowMenu' }
     ]));
     rebuildMenu();
     if (!workspaces.state.windows.length) workspaces.newWindow();
-    for (const state of workspaces.state.windows.slice(0, 12)) buildWindow(state);
-    app.on('activate', () => { if (!windows.size) buildWindow(workspaces.state.windows[0] || workspaces.newWindow()); });
+    for (const state of workspaces.state.windows.slice(0, config.startupHome ? 1 : 12)) buildWindow(state, { home: config.startupHome });
+    app.on('activate', () => { if (!windows.size) buildWindow(workspaces.state.windows[0] || workspaces.newWindow(), { home: config.startupHome }); });
   }).catch(error => { dialog.showErrorBox('Orbit could not start', error.message); app.exit(1); });
 }
 app.on('window-all-closed', () => app.quit());

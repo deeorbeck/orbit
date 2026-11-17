@@ -1,3 +1,6 @@
+import { TerminalEffects } from './terminal-effects.js';
+import effectProfiles from './effect-profiles.cjs';
+const { fontProfile } = effectProfiles;
 import fontCatalog from './font-catalog.cjs';
 const { extraFonts, fontOptions } = fontCatalog;
 import { t, setLanguage, translateDocument } from './i18n-dom.js';
@@ -10,6 +13,7 @@ const { currentTheme, themeCatalog } = themeDefinitions;
 const $ = (selector, root = document) => root.querySelector(selector);
 const api = window.orbit;
 const icons = {
+  focus: '<path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/>',
   terminal: '<path d="m4 5 6 7-6 7m9 0h7"/>', search: '<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>',
   settings: '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor" stroke="none"/><circle cx="15" cy="17" r="3" fill="currentColor" stroke="none"/>',
   folder: '<path d="M3 7V5h6l2 2h10v13H3z"/>', chevron: '<path d="m9 5 6 7-6 7"/>', plus: '<path d="M12 5v14M5 12h14"/>',
@@ -24,6 +28,8 @@ const icons = {
 const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.terminal}</svg>`;
 function hydrateIcons(root = document) { root.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = icon(el.dataset.icon); }); }
 hydrateIcons();
+const effects = new TerminalEffects($('#effects-canvas'));
+let focusMode = false;
 const autoReconnectRow = document.createElement('label'); autoReconnectRow.className = 'persistent-toggle';
 autoReconnectRow.innerHTML = '<span><span data-i18n="Reconnect automatically">Reconnect automatically</span><small data-i18n="For a previously connected tmux session">For a previously connected tmux session</small></span><input type="checkbox" name="autoReconnect" class="switch" checked>';
 $('#session-name-field').before(autoReconnectRow);
@@ -52,7 +58,16 @@ const updateFocus = () => workspace?.focusActive();
 const fitVisible = () => workspace?.fit();
 function renderFolder() { workspace?.renderProjects(); }
 function effectiveFont() { return config.appearance.fontFamily || currentTheme(config).fontFamily; }
-function appearance() { return { ...config.appearance, fontFamily: effectiveFont(), lineHeight: currentTheme(config).lineHeight }; }
+function selectedFontName() { return allFontOptions().find(font => font.fontFamily === effectiveFont())?.name || effectiveFont(); }
+function appearance() { return { ...config.appearance, ...fontProfile(selectedFontName(), config.appearance.effectStyle), fontFamily: effectiveFont(), lineHeight: currentTheme(config).lineHeight }; }
+async function setFocusMode(enabled) {
+  if (enabled && workspace?.inHome) await workspace.resume();
+  focusMode = enabled;
+  if (enabled) document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
+  document.body.classList.toggle('terminal-only', enabled);
+  await api.focusMode(enabled); requestAnimationFrame(fitVisible); updateFocus();
+}
+window.addEventListener('keydown', event => { if (event.key === 'Escape' && focusMode) { event.preventDefault(); event.stopImmediatePropagation(); run(() => setFocusMode(false)); } }, true);
 function notify(message) { const toast = $('#toast'); toast.textContent = String(message).replace(/^Error invoking remote method '[^']+': Error: /, ''); toast.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.hidden = true, 6500); }
 const run = callback => Promise.resolve().then(callback).catch(error => notify(error.message));
 function shortPath(value) { return value?.startsWith(home) ? '~' + value.slice(home.length) : value; }
@@ -68,7 +83,7 @@ function applyAppearance() {
   sidebarButton.setAttribute('aria-label', sidebarLabel);
   sidebarButton.title = `${sidebarLabel} · ${shortcutMap.sidebar?.key || '⌘B'}`;
   document.body.dataset.theme = a.theme;
-  document.body.className = `theme-${a.theme}${theme.custom ? " theme-" + theme.baseTheme : ""}${a.sidebar ? '' : ' sidebar-hidden'}`;
+  document.body.className = `${focusMode ? "terminal-only " : ""}${workspace?.inHome ? "home-visible " : ""}theme-${a.theme}${theme.custom ? " theme-" + theme.baseTheme : ""}${a.sidebar ? '' : ' sidebar-hidden'}`;
   for (const name of ['base', 'side', 'bar', 'text', 'muted', 'faint', 'accent']) document.body.style.setProperty(`--${name}`, theme[name]);
   document.body.style.setProperty('--terminal-bg', theme.terminal);
   document.body.style.setProperty('--line', theme.light ? '#1b30441c' : '#ffffff12');
@@ -79,7 +94,13 @@ function applyAppearance() {
   $('#wallpaper').style.backgroundImage = `url("${wallpaperUrl}")`;
   $('#wallpaper').style.backgroundSize = a.wallpaperMode === 'fill' ? '100% 100%' : a.wallpaperMode;
   $('#wallpaper-preview').style.backgroundImage = `url("${wallpaperUrl}")`;
-  document.body.style.setProperty('--ui-font', theme.uiFont || '-apple-system, BlinkMacSystemFont, sans-serif');
+  document.body.style.setProperty('--ui-font', effectiveFont());
+  document.body.style.setProperty('--orbit-font', effectiveFont());
+  const profile = fontProfile(selectedFontName(), a.effectStyle); document.body.dataset.effectStyle = profile.style; document.body.dataset.effects = String(a.effects);
+  effects.configure({ appearance: a, fontName: selectedFontName(), fontFamily: effectiveFont(), accent: theme.accent, light: theme.light });
+  $('#effects-button').setAttribute('aria-pressed', String(a.effects));
+  $('#effects-button').title = t(a.effects ? 'Effects on · click to turn off' : 'Effects off · click to turn on') + ' · ' + (shortcutMap.effects?.key || '');
+  $('#focus-mode-button').title = t('Terminal only · Esc to return') + ' · ' + (shortcutMap.focusMode?.key || '');
   workspace?.applyAppearance();
   $('#font-preview').style.fontFamily = effectiveFont();
   const selectedFont = allFontOptions().find(font => font.fontFamily === effectiveFont());
@@ -136,6 +157,8 @@ function syncSettings() {
   assign('#wallpaper-mode', a.wallpaperMode);
   $('#wallpaper-toggle').checked = a.wallpaper;
   $('#sidebar-toggle').checked = a.sidebar;
+  $('#effects-toggle').checked = a.effects; $('#typing-effects').checked = a.typingEffects; $('#ambient-effects').checked = a.ambientEffects;
+  $('#startup-home').checked = config.startupHome; assign('#effect-style', a.effectStyle); assign('#effect-intensity', Math.round(a.effectIntensity * 100)); $('#effect-output').textContent = Math.round(a.effectIntensity * 100) + '%';
   document.querySelectorAll('[data-theme]').forEach(el => el.classList.toggle('selected', el.dataset.theme === a.theme));
 }
 function renderServers() {
@@ -234,6 +257,7 @@ function handleAction(name) {
     ...Object.fromEntries(Array.from({ length: 9 }, (_, i) => ['tab' + (i + 1), () => workspace.selectTabAt(i)])),
     next: () => workspace.cycleTab(1), previous: () => workspace.cycleTab(-1), nextPane: () => workspace.cyclePane(1), previousPane: () => workspace.cyclePane(-1),
     nextProject: () => workspace.cycleProject(1), previousProject: () => workspace.cycleProject(-1), rename: () => openRename(activeTab()), find,
+    focusMode: () => setFocusMode(!focusMode), exitFocus: () => setFocusMode(false), effects: () => { config.appearance.effects = !config.appearance.effects; applyAppearance(); save(); },
     sidebar: () => { config.appearance.sidebar = !config.appearance.sidebar; applyAppearance(); save(); },
     fontUp: () => { config.appearance.fontSize = Math.min(28, config.appearance.fontSize + 1); applyAppearance(); save(); },
     fontDown: () => { config.appearance.fontSize = Math.max(10, config.appearance.fontSize - 1); applyAppearance(); save(); }
@@ -251,6 +275,13 @@ $('#new-codex').onclick = () => run(() => newTab({ codex: true }));
 $('#split-button').onclick = () => run(() => split('horizontal'));
 $('#split-vertical-button').onclick = () => run(() => split('vertical'));
 $('#sidebar-button').onclick = () => handleAction('sidebar');
+$('#home-button').onclick = () => run(async () => { await workspace.save(); workspace.initial.savedWindows = (await api.init()).savedWindows; workspace.showHome(); });
+$('#focus-mode-button').onclick = $('#settings-focus-mode').onclick = () => handleAction('focusMode');
+$('#effects-button').onclick = () => handleAction('effects');
+$('#effect-style').onchange = event => { config.appearance.effectStyle = event.target.value; applyAppearance(); save(); };
+$('#effect-intensity').oninput = event => { config.appearance.effectIntensity = Number(event.target.value) / 100; applyAppearance(); save(); };
+$('#startup-home').onchange = event => { config.startupHome = event.target.checked; save(); };
+for (const [selector, key] of [['#effects-toggle','effects'],['#typing-effects','typingEffects'],['#ambient-effects','ambientEffects']]) $(selector).onchange = event => { config.appearance[key] = event.target.checked; applyAppearance(); save(); };
 $('#new-window').onclick = () => run(() => workspace.newWindow());
 $('#add-project').onclick = () => openProject();
 $('#settings-button').onclick = () => openDialog('#settings-dialog');
@@ -310,6 +341,7 @@ $('#project-form').onsubmit = event => { event.preventDefault(); run(async () =>
 $('#rename-form').onsubmit = event => { event.preventDefault(); if (renamingTab) workspace.renameTab(renamingTab, $('#rename-name').value); $('#rename-dialog').close(); };
 run(async () => {
   const initial = await api.init(); config = initial.config; home = initial.home; wallpaperUrl = initial.wallpaper; platform = initial.platform;
+  if (initial.testing) window.__orbitEffectsFrame = offset => effects.draw(performance.now() + offset);
   document.documentElement.dataset.platform = platform;
   shortcutMap = Object.fromEntries(initial.shortcuts.map(s => [s.id, s]));
   await loadLocalFonts(initial.localFonts || []);
@@ -320,6 +352,6 @@ run(async () => {
   $('#palette-button kbd').textContent = shortcutMap.palette.key;
   for (const [selector, action] of [['#add-tab','new'],['#split-button','split'],['#split-vertical-button','splitVertical'],['#new-window','newWindow'],['#choose-folder','projects']]) $(selector).title += ' · ' + shortcutMap[action].key;
   localizeUI();
-  workspace = new WorkspaceUI({ api, initial, icon, appearance, theme: terminalTheme, notify, openProject, openRename });
+  workspace = new WorkspaceUI({ api, initial, icon, appearance, theme: terminalTheme, notify, openProject, openRename, onTyping: position => effects.emit(position) });
   applyAppearance(); await workspace.init(); run(refreshConnections);
 });
