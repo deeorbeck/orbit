@@ -1,10 +1,11 @@
 import fontCatalog from './font-catalog.cjs';
 const { extraFonts, fontOptions } = fontCatalog;
 import { t, setLanguage, translateDocument } from './i18n-dom.js';
+import { installThemeEditor } from './theme-editor.js';
 import { WorkspaceUI } from './workspace-ui.js';
 import './style.css';
 import themeDefinitions from './themes.cjs';
-const { themes } = themeDefinitions;
+const { currentTheme, themeCatalog } = themeDefinitions;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const api = window.orbit;
@@ -50,8 +51,8 @@ const activeTab = () => workspace?.activeTab();
 const updateFocus = () => workspace?.focusActive();
 const fitVisible = () => workspace?.fit();
 function renderFolder() { workspace?.renderProjects(); }
-function effectiveFont() { return config.appearance.fontFamily || (themes[config.appearance.theme] || themes.graphite).fontFamily; }
-function appearance() { return { ...config.appearance, fontFamily: effectiveFont(), lineHeight: (themes[config.appearance.theme] || themes.graphite).lineHeight }; }
+function effectiveFont() { return config.appearance.fontFamily || currentTheme(config).fontFamily; }
+function appearance() { return { ...config.appearance, fontFamily: effectiveFont(), lineHeight: currentTheme(config).lineHeight }; }
 function notify(message) { const toast = $('#toast'); toast.textContent = String(message).replace(/^Error invoking remote method '[^']+': Error: /, ''); toast.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.hidden = true, 6500); }
 const run = callback => Promise.resolve().then(callback).catch(error => notify(error.message));
 function shortPath(value) { return value?.startsWith(home) ? '~' + value.slice(home.length) : value; }
@@ -60,13 +61,14 @@ function shortcutLabel(value) { return platform === 'darwin' ? value : value.rep
 function save() { clearTimeout(saving); const pending = structuredClone(config); saving = setTimeout(() => { saving = null; run(async () => { await api.save(pending); }); }, 150); }
 function applyAppearance() {
   const a = config.appearance;
-  const theme = themes[a.theme] || themes.graphite;
+  const theme = currentTheme(config);
   const sidebarButton = $('#sidebar-button');
   const sidebarLabel = a.sidebar ? t("Hide sidebar") : t("Show sidebar");
   sidebarButton.setAttribute('aria-expanded', String(a.sidebar));
   sidebarButton.setAttribute('aria-label', sidebarLabel);
   sidebarButton.title = `${sidebarLabel} · ${shortcutMap.sidebar?.key || '⌘B'}`;
-  document.body.className = `theme-${a.theme}${a.sidebar ? '' : ' sidebar-hidden'}`;
+  document.body.dataset.theme = a.theme;
+  document.body.className = `theme-${a.theme}${theme.custom ? " theme-" + theme.baseTheme : ""}${a.sidebar ? '' : ' sidebar-hidden'}`;
   for (const name of ['base', 'side', 'bar', 'text', 'muted', 'faint', 'accent']) document.body.style.setProperty(`--${name}`, theme[name]);
   document.body.style.setProperty('--terminal-bg', theme.terminal);
   document.body.style.setProperty('--line', theme.light ? '#1b30441c' : '#ffffff12');
@@ -87,7 +89,7 @@ function applyAppearance() {
   requestAnimationFrame(fitVisible);
 }
 function terminalTheme() {
-  const t = themes[config.appearance.theme] || themes.graphite;
+  const t = currentTheme(config);
   return { background: '#00000000', foreground: t.foreground, cursor: t.accent, selectionBackground: t.light ? '#45749a32' : '#a2b8d13d', black: t.light ? '#263b46' : '#303840', red: t.light ? '#a43d43' : '#e69794', green: t.light ? '#3b7250' : '#a2c4aa', yellow: t.light ? '#8e6b20' : '#dcc18c', blue: t.light ? '#356aa6' : '#8db4dd', magenta: t.light ? '#82509d' : '#bca3d5', cyan: t.light ? '#2d7778' : '#91c8c8', white: t.light ? '#5f6b73' : '#d8e0e7', brightBlack: t.light ? '#64757e' : '#798693', brightRed: t.light ? '#b9363d' : '#f4a9a4', brightGreen: t.light ? '#347c48' : '#b3d9b9', brightYellow: t.light ? '#8b6b11' : '#edd5a0', brightBlue: t.light ? '#2c70b7' : '#a6c8ee', brightMagenta: t.light ? '#8f4bae' : '#cfb7e8', brightCyan: t.light ? '#1f7e82' : '#a3dddd', brightWhite: t.light ? '#1b2f3a' : '#f0f3f6' };
 }
 const messagesTheme = name => t('{name} theme', { name });
@@ -108,7 +110,7 @@ function localizeUI() {
 }
 function renderThemes() {
   const container = $('#theme-options'); container.replaceChildren();
-  for (const [id, t] of Object.entries(themes)) {
+  for (const [id, t] of Object.entries(themeCatalog(config))) {
     const el = document.createElement('button'); el.dataset.theme = id; el.setAttribute('aria-label', messagesTheme(t.name));
     const preview = document.createElement('span'); preview.className = 'theme-mini'; preview.style.background = t.terminal; preview.style.borderColor = t.side;
     const miniSide = document.createElement('i'); miniSide.style.background = t.side;
@@ -118,12 +120,13 @@ function renderThemes() {
     const title = document.createElement('strong'); title.textContent = t.name;
     const description = document.createElement('small'); description.textContent = t.fontName;
     text.append(title, description); el.append(preview, text);
-    el.onclick = () => { config.appearance.theme = id; applyAppearance(); save(); };
+    el.onclick = () => { config.appearance.theme = id; if (t.custom) { config.appearance.fontFamily = ''; config.appearance.fontSize = t.fontSize; } applyAppearance(); save(); };
     container.append(el);
   }
 }
 function syncSettings() {
   const a = config.appearance;
+  $('#edit-theme').disabled = !currentTheme(config).custom;
   const assign = (selector, value) => { const el = $(selector); if (document.activeElement !== el) el.value = value; };
   $('#language').value = config.language;
   if ($('#font-family')) $('#font-family').value = a.fontFamily;
@@ -239,7 +242,7 @@ function handleAction(name) {
 }
 api.onError(notify);
 api.onAction(handleAction);
-api.onConfig(value => { if (saving) return; const changed = config?.language !== value.language; config = value; if (changed) localizeUI(); applyAppearance(); renderServers(); renderFontOptions(); });
+api.onConfig(value => { if (saving) return; const changed = config?.language !== value.language; config = value; if (changed) localizeUI(); else renderThemes(); applyAppearance(); renderServers(); renderFontOptions(); });
 api.onWallpaper(url => { wallpaperUrl = url; applyAppearance(); });
 document.querySelectorAll('.close-dialog').forEach(el => el.onclick = () => el.closest('dialog').close());
 document.querySelectorAll('dialog').forEach(dialog => { dialog.addEventListener('click', event => { if (event.target === dialog) { const rect = dialog.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close(); } }); dialog.addEventListener('close', updateFocus); });
@@ -277,6 +280,14 @@ $('#palette-input').onkeydown = event => {
   if (['ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); paletteIndex = (paletteIndex + (event.key === 'ArrowDown' ? 1 : -1) + paletteItems.length) % (paletteItems.length || 1); renderPalette(); $('#palette-results .selected')?.scrollIntoView({ block: 'nearest' }); }
   if (event.key === 'Enter' && paletteItems[paletteIndex]) { event.preventDefault(); const item = paletteItems[paletteIndex]; $('#palette-dialog').close(); run(item.run); }
 };
+installThemeEditor({
+  getConfig: () => config, fontOptions: allFontOptions, notify,
+  onSave: async value => {
+    clearTimeout(saving); saving = -1;
+    try { config = await api.save(value); } finally { saving = null; }
+    renderThemes(); renderFontOptions(); applyAppearance();
+  }
+});
 $('#language').onchange = event => { config.language = event.target.value; localizeUI(); applyAppearance(); save(); };
 $('#import-font').onclick = () => run(async () => {
   const imported = await api.importFonts(); if (!imported.length) return;

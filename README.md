@@ -193,3 +193,9 @@ Settings → Terminal font includes Share Tech Mono (tech/coding), VT323 (retro)
 Settings → **Import font…** accepts TTF, OTF, WOFF and WOFF2 files. Imported fonts stay in the private Orbit data folder and appear in the font selector in every window. They are not added to the public source distribution. Font changes apply immediately to existing panes.
 
 Use **Command+scroll** on macOS (**Control+scroll** elsewhere) to resize terminal text. **Shift+Enter** inserts a newline in shell input or Codex; plain **Enter** submits. The workspace footer has been removed to leave more room for terminal content.
+
+### Create your own theme
+
+Open **Settings → New theme** to copy the current appearance. Choose terminal/interface colors, font, size, line height and light/dark mode with a live preview. **Save & use as default** saves the theme and uses it on the next launch. Select a saved theme and choose **Edit theme** to update it. Cancel leaves your current theme unchanged; deleting a custom theme requires a second click.
+
+Custom themes live in `config.json` under `customThemes`. The selected `appearance.theme` is the startup choice. They survive app updates and also support privately imported fonts.

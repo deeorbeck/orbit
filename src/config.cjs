@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
-const { themeIds } = require('./themes.cjs');
+const { themeIds, normalizeCustomThemes } = require('./themes.cjs');
 const { defaultShell } = require('./platform.cjs');
 
 const defaults = {
@@ -11,16 +11,19 @@ const defaults = {
   shell: defaultShell(),
   startingDirectory: os.homedir(),
   codexCommand: 'codex',
-  servers: []
+  servers: [],
+  customThemes: []
 };
 function text(v, fallback = '', max = 2048) { return typeof v === 'string' && !/[\x00-\x1f]/.test(v) ? v.slice(0, max) : fallback; }
 function normalize(raw = {}) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Config must be a JSON object.');
   const a = raw.appearance || {};
+  const customThemes = normalizeCustomThemes(raw.customThemes);
   const number = (v, d, lo, hi) => typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d;
   return {
     version: 1,
     language: raw.language === 'uz' ? 'uz' : 'en',
+    customThemes,
     appearance: {
       fontSize: number(a.fontSize, 14, 10, 28),
       fontFamily: ['SFMono-Regular, Menlo, monospace', 'SFMono-Regular, Cascadia Mono, Menlo, Consolas, monospace'].includes(a.fontFamily) ? '' : text(a.fontFamily, '', 160),
@@ -29,7 +32,7 @@ function normalize(raw = {}) {
       wallpaperOpacity: number(a.wallpaperOpacity, 0.28, 0, 1),
       dim: number(a.dim, 0.25, 0, 0.85),
       sidebar: typeof a.sidebar === 'boolean' ? a.sidebar : true,
-      theme: themeIds.includes(a.theme) ? a.theme : 'graphite'
+      theme: themeIds.includes(a.theme) || customThemes.some(theme => theme.id === a.theme) ? a.theme : 'graphite'
     },
     shell: text(raw.shell, defaults.shell),
     startingDirectory: text(raw.startingDirectory, defaults.startingDirectory),

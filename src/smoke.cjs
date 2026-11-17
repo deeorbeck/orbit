@@ -13,7 +13,7 @@ module.exports = (win, app) => {
     throw new Error(`Timed out: ${test}`);
   };
   const sendCommand = async command => {
-    app.focus({ steal: true }); win.focus(); win.webContents.focus(); await evaluate('document.querySelector(".pane-group:not([hidden]) .active-pane .xterm-helper-textarea, .pane-group:not([hidden]) .xterm-helper-textarea").focus()');
+    if (!process.env.ORBIT_SMOKE_BACKGROUND) { app.focus({ steal: true }); win.focus(); } win.webContents.focus(); await evaluate('document.querySelector(".pane-group:not([hidden]) .active-pane .xterm-helper-textarea, .pane-group:not([hidden]) .xterm-helper-textarea").focus()');
     await win.webContents.insertText(command); win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
   };
   win.webContents.once('did-finish-load', async () => {
@@ -31,12 +31,15 @@ module.exports = (win, app) => {
         await until(() => BrowserWindow.getAllWindows().length === 2);
         await until('document.querySelectorAll("[role=tab]").length === 3 && document.querySelectorAll(".pane-group:not([hidden]) .terminal-pane").length === 3');
         assert.equal(await evaluate('document.querySelector("#folder-name").textContent'), 'QA project');
+        assert.equal(await evaluate('document.body.dataset.theme'), expected.customThemeId, 'Reopening must use the saved custom default.');
+        assert.equal(await evaluate('getComputedStyle(document.body).getPropertyValue("--terminal-bg").trim()'), '#132839');
+        assert((await evaluate('getComputedStyle(document.querySelector(".pane-group:not([hidden]) .xterm-rows")).fontFamily')).includes(expected.customFontFace));
         assert.equal(await evaluate('!!document.querySelector(".pane-group:not([hidden]) .split-node.vertical")'), true);
         const command = process.platform === 'win32' ? "Write-Output ('AFTER_GUI:'+$global:ORBIT_KEEP)" : "printf '\\nAFTER_GUI:%s\\n' \"$ORBIT_KEEP\"";
         await client.request('write', { id: expected.originalId, data: command + '\r' });
         await until(async () => (await client.request('attach', { id: expected.originalId })).snapshot.includes('AFTER_GUI:kept'));
         assert.equal(fs.realpathSync.native(await client.request('cwd', { id: expected.originalId })), fs.realpathSync.native(expected.childFolder));
-        console.log('ORBIT_RESTORE_PASS: same PIDs, variables, cwd, projects, tabs, nested splits and two native windows after complete GUI exit');
+        console.log('ORBIT_RESTORE_PASS: custom startup theme, imported theme font, same PIDs, projects, splits and two windows');
       } else {
         await until('document.querySelector(".xterm-screen").innerText.trim().length > 0');
         const fonts = new Set();
@@ -106,8 +109,8 @@ module.exports = (win, app) => {
         win.setSize(1320, 860);
         await until(screensFit);
         const paneIds = await evaluate(`(() => { const rects = [...document.querySelectorAll('.pane-group:not([hidden]) .terminal-pane')].map(el => ({ id: el.dataset.sessionId, ...el.getBoundingClientRect().toJSON() })); const bottom = rects.toSorted((a,b) => b.top-a.top)[0]; const top = rects.find(r => r.id !== bottom.id && r.bottom <= bottom.top && r.left === bottom.left); if (!top) throw new Error('Expected a vertical pair'); return [rects.find(r => r.id !== top.id && r.id !== bottom.id).id, top.id, bottom.id]; })()`);
-        app.focus({ steal: true }); win.focus(); win.webContents.focus();
-        await until(() => win.isFocused());
+        if (!process.env.ORBIT_SMOKE_BACKGROUND) { app.focus({ steal: true }); win.focus(); } win.webContents.focus();
+        if (!process.env.ORBIT_SMOKE_BACKGROUND) await until(() => win.isFocused());
         await evaluate(`document.querySelector('[data-session-id="${paneIds[2]}"]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))`);
         const activeId = () => evaluate('window.__orbitWorkspaceSnapshot().tabs.find(t => t.id === window.__orbitWorkspaceSnapshot().activeTabId).activePaneId');
         await until(async () => await activeId() === paneIds[2]);
@@ -136,7 +139,7 @@ module.exports = (win, app) => {
         const tabIds = navState.tabs.map(t => t.id);
         let navIndex = tabIds.indexOf(navState.activeTabId);
         const press = (keyCode, modifiers) => { win.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers }); };
-        app.focus({ steal: true }); win.focus(); win.webContents.focus();
+        if (!process.env.ORBIT_SMOKE_BACKGROUND) { app.focus({ steal: true }); win.focus(); } win.webContents.focus();
         for (let n = 0; n < 8; n++) {
           await evaluate('document.querySelector(".pane-group:not([hidden]) .xterm-helper-textarea").focus()');
           const backwards = n >= 5;
@@ -168,6 +171,36 @@ module.exports = (win, app) => {
         assert.equal(BrowserWindow.getAllWindows().length, 1, 'Pane/tab close and exit must not quit Orbit.');
         await evaluate('document.querySelectorAll("[role=tab]")[1].click()');
         const imageLoads = await evaluate('new Promise(resolve => {const image = new Image();image.onload = () => resolve(image.naturalWidth > 0);image.onerror = () => resolve(false);image.src = "orbit://wallpaper/image";})'); assert(imageLoads);
+        await evaluate('document.querySelector("#new-theme").click()');
+        await until('document.querySelector("#theme-dialog").open');
+        const customFont = (await evaluate('window.orbit.init().then(value => value.localFonts)'))[0];
+        if (process.env.ORBIT_THEME_CAPTURE) { await evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))'); fs.writeFileSync(process.env.ORBIT_THEME_CAPTURE, (await win.webContents.capturePage()).toPNG()); }
+        await evaluate(`document.querySelector('#theme-name').value='QA Custom'; const color=document.querySelector('[data-theme-color=terminal]'); color.value='#132839'; color.dispatchEvent(new Event('input')); document.querySelector('#theme-font').value=${JSON.stringify(customFont.fontFamily)}; document.querySelector('#theme-font-size').value=17; document.querySelector('#theme-form').requestSubmit()`);
+        await until('!document.querySelector("#theme-dialog").open && document.body.dataset.theme.startsWith("custom-")');
+        const customThemeId = await evaluate('document.body.dataset.theme');
+        assert.equal(await evaluate('getComputedStyle(document.body).getPropertyValue("--terminal-bg").trim()'), '#132839');
+        assert((await evaluate('getComputedStyle(document.querySelector(".pane-group:not([hidden]) .xterm-rows")).fontFamily')).includes(customFont.face));
+        await evaluate('document.querySelector("#edit-theme").click()');
+        await until('document.querySelector("#theme-dialog").open');
+        await evaluate(`document.querySelector('#theme-name').value='QA Custom Edited'; document.querySelector('#theme-form').requestSubmit()`);
+        await until('!document.querySelector("#theme-dialog").open');
+        const savedThemes = await evaluate('window.orbit.init().then(value => value.config.customThemes)');
+        assert.equal(savedThemes.filter(theme => theme.id === customThemeId).length, 1, 'Editing must update the existing theme.');
+        assert.equal(savedThemes.find(theme => theme.id === customThemeId).name, 'QA Custom Edited');
+        await evaluate('document.querySelector("#new-theme").click(); document.querySelector("#theme-dialog .close-dialog").click()');
+        assert.equal(await evaluate('document.body.dataset.theme'), customThemeId, 'Cancel must keep the saved default.');
+        await evaluate(`document.querySelector('#new-theme').click(); document.querySelector('#theme-name').value='Temporary theme'; document.querySelector('#theme-form').requestSubmit()`);
+        await until('!document.querySelector("#theme-dialog").open');
+        const temporaryId = await evaluate('document.body.dataset.theme');
+        assert.notEqual(temporaryId, customThemeId, 'New theme must duplicate without overwriting its source.');
+        await evaluate('document.querySelector("#edit-theme").click(); document.querySelector("#delete-theme").click()');
+        assert.equal(await evaluate('document.querySelector("#theme-dialog").open'), true, 'Deleting requires a second click.');
+        await evaluate('document.querySelector("#delete-theme").click()');
+        await until('!document.querySelector("#theme-dialog").open');
+        assert(!(await evaluate('window.orbit.init().then(value => value.config.customThemes)')).some(theme => theme.id === temporaryId));
+        await evaluate(`document.querySelector('[data-theme="${customThemeId}"]').click()`);
+        await until(async () => (await evaluate('window.orbit.init().then(value => value.config.appearance.theme)')) === customThemeId);
+
         await evaluate('document.querySelector("#new-window").click()');
         await until(() => BrowserWindow.getAllWindows().length === 2);
         const second = BrowserWindow.getAllWindows().find(item => item !== win);
@@ -176,9 +209,9 @@ module.exports = (win, app) => {
         await second.webContents.executeJavaScript('window.orbit.saveWorkspace(window.__orbitWorkspaceSnapshot())');
         const sessions = await client.request('list');
         assert.equal(sessions.length, 7, 'Expected seven independent processes across projects and windows.');
-        fs.writeFileSync(stateFile, JSON.stringify({ originalId, childFolder, sessions: sessions.map(({ id, pid }) => ({ id, pid })) }));
+        fs.writeFileSync(stateFile, JSON.stringify({ originalId, childFolder, customThemeId, customFontFace: customFont.face, sessions: sessions.map(({ id, pid }) => ({ id, pid })) }));
         if (process.env.ORBIT_SMOKE_CAPTURE) { const image = await win.webContents.capturePage(); fs.writeFileSync(process.env.ORBIT_SMOKE_CAPTURE, image.toPNG()); }
-        console.log('ORBIT_SMOKE_PASS: bundled and imported fonts, font zoom, no footer, Shift+Enter, projects, splits and native shortcuts');
+        console.log('ORBIT_SMOKE_PASS: custom theme create/edit/cancel/delete, imported fonts, zoom, Shift+Enter and native navigation');
       }
       client.disconnect(); app.quit();
     } catch (error) {

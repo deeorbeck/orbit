@@ -1,3 +1,11 @@
+## Orbit Terminal 0.3.13 — your own themes
+
+- Create a theme from the current appearance in Settings, preview colors live, and edit saved themes.
+- Customize terminal and interface colors, imported or bundled fonts, font size, line height and light/dark mode.
+- Save & use as default persists the theme before closing the editor. The chosen theme loads automatically on the next launch and applies across windows.
+- Cancel preserves the current appearance. Deletion requires a second click and safely falls back to a built-in theme.
+- Native tests verify custom theme creation, editing, duplication, cancellation, deletion and startup restoration with an imported font.
+
 ## Orbit Terminal 0.3.12 — local fonts and more terminal space
 
 - Import private TTF, OTF, WOFF and WOFF2 fonts in Settings; switch fonts live and keep imports across updates. Distinct CSS families avoid font metadata collisions.

@@ -24,4 +24,26 @@ const typography = {
   paper: ['Cutive Mono', '"Cutive Mono", monospace', 1.3],
 };
 for (const [id, [fontName, uiFont, lineHeight]] of Object.entries(typography)) Object.assign(themes[id], { fontName, fontFamily: `"${fontName}", monospace`, uiFont, lineHeight });
-module.exports = { themes, themeIds: Object.keys(themes) };
+const colorKeys = ['base', 'side', 'bar', 'terminal', 'text', 'muted', 'faint', 'accent', 'foreground'];
+const cleanText = (value, fallback, max = 160) => typeof value === 'string' && !/[\x00-\x1f]/.test(value) ? value.trim().slice(0, max) || fallback : fallback;
+function normalizeCustomThemes(values) {
+  const seen = new Set();
+  return (Array.isArray(values) ? values : []).slice(0, 50).filter(value => {
+    if (!value || typeof value !== 'object' || !/^custom-[a-zA-Z0-9-]{1,64}$/.test(value.id) || seen.has(value.id)) return false;
+    seen.add(value.id); return true;
+  }).map(value => {
+    const baseTheme = Object.hasOwn(themes, value.baseTheme) ? value.baseTheme : 'graphite', base = themes[baseTheme];
+    const fontFamily = cleanText(value.fontFamily, base.fontFamily);
+    return {
+      id: value.id, custom: true, baseTheme, name: cleanText(value.name, 'My theme', 60), description: 'Custom theme',
+      light: typeof value.light === 'boolean' ? value.light : !!base.light,
+      ...Object.fromEntries(colorKeys.map(key => [key, /^#[0-9a-f]{6}$/i.test(value[key]) ? value[key].toLowerCase() : base[key]])),
+      fontFamily, fontName: cleanText(value.fontName, fontFamily.split(',')[0].replaceAll('"', ''), 60), uiFont: base.uiFont,
+      fontSize: Number.isFinite(value.fontSize) ? Math.max(10, Math.min(28, value.fontSize)) : 14,
+      lineHeight: Number.isFinite(value.lineHeight) ? Math.max(1, Math.min(2, value.lineHeight)) : base.lineHeight,
+    };
+  });
+}
+function themeCatalog(config = {}) { return { ...themes, ...Object.fromEntries(normalizeCustomThemes(config.customThemes).map(theme => [theme.id, theme])) }; }
+function currentTheme(config = {}) { return themeCatalog(config)[config.appearance?.theme] || themes.graphite; }
+module.exports = { themes, themeIds: Object.keys(themes), colorKeys, normalizeCustomThemes, themeCatalog, currentTheme };
