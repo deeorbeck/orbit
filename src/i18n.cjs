@@ -1,5 +1,8 @@
 // English message keys are also the fallback for future translations.
 const uz = {
+  "Resume Codex": "Codex suhbatini davom ettirish",
+  "Trails per keystroke": "Har tugmada izlar soni",
+  "Match theme automatically": "Theme’ga avtomatik moslash",
   "Right-click for effect settings": "Effekt sozlamalari uchun o‘ng tugmani bosing",
   "Effect settings": "Effekt sozlamalari",
   "Visibility": "Ko‘rinarlilik",

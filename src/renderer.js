@@ -59,8 +59,9 @@ const updateFocus = () => workspace?.focusActive();
 const fitVisible = () => workspace?.fit();
 function renderFolder() { workspace?.renderProjects(); }
 function effectiveFont() { return config.appearance.fontFamily || currentTheme(config).fontFamily; }
+function effectContext() { return { themeId: config.appearance.theme, baseTheme: currentTheme(config).baseTheme }; }
 function selectedFontName() { return allFontOptions().find(font => font.fontFamily === effectiveFont())?.name || effectiveFont(); }
-function appearance() { return { ...config.appearance, ...fontProfile(selectedFontName(), config.appearance.effectStyle), fontFamily: effectiveFont(), lineHeight: currentTheme(config).lineHeight }; }
+function appearance() { return { ...config.appearance, ...fontProfile(selectedFontName(), config.appearance.effectStyle, effectContext()), fontFamily: effectiveFont(), lineHeight: currentTheme(config).lineHeight }; }
 async function setFocusMode(enabled) {
   if (enabled && workspace?.inHome) await workspace.resume();
   focusMode = enabled;
@@ -97,8 +98,8 @@ function applyAppearance() {
   $('#wallpaper-preview').style.backgroundImage = `url("${wallpaperUrl}")`;
   document.body.style.setProperty('--ui-font', effectiveFont());
   document.body.style.setProperty('--orbit-font', effectiveFont());
-  const profile = fontProfile(selectedFontName(), a.effectStyle); document.body.dataset.effectStyle = profile.style; document.body.dataset.effects = String(a.effects);
-  const effectOptions = { appearance: a, fontName: selectedFontName(), fontFamily: effectiveFont(), accent: theme.accent, light: theme.light };
+  const profile = fontProfile(selectedFontName(), a.effectStyle, effectContext()); document.body.dataset.effectStyle = profile.style; document.body.dataset.effects = String(a.effects);
+  const effectOptions = { appearance: a, fontName: selectedFontName(), fontFamily: effectiveFont(), accent: theme.accent, light: theme.light, ...effectContext() };
   effects.configure(effectOptions); effectPreview.configure(effectOptions);
   $('#effects-button').setAttribute('aria-pressed', String(a.effects));
   $('#effects-button').title = t(a.effects ? 'Effects on · click to turn off' : 'Effects off · click to turn on') + ' · ' + t('Right-click for effect settings') + ' · ' + (shortcutMap.effects?.key || '');
@@ -162,6 +163,7 @@ function syncSettings() {
   $('#effects-toggle').checked = a.effects; $('#typing-effects').checked = a.typingEffects; $('#ambient-effects').checked = a.ambientEffects;
   $('#startup-home').checked = config.startupHome; assign('#effect-style', a.effectStyle); assign('#effect-intensity', Math.round(a.effectIntensity * 100)); $('#effect-output').textContent = Math.round(a.effectIntensity * 100) + '%';
   assign('#effect-speed', Math.round(a.effectSpeed * 100)); $('#effect-speed-output').textContent = a.effectSpeed.toFixed(2).replace(/0$/, '') + '×';
+  assign('#effect-count', a.effectTrailCount); $('#effect-count-output').textContent = String(a.effectTrailCount);
   assign('#effect-size', Math.round(a.effectSize * 100)); $('#effect-size-output').textContent = a.effectSize.toFixed(2).replace(/0$/, '') + '×';
   document.querySelectorAll('[data-theme]').forEach(el => el.classList.toggle('selected', el.dataset.theme === a.theme));
 }
@@ -221,7 +223,7 @@ function renderFontOptions() {
 function actions() {
   const projectActions = (workspace?.projects || []).map(p => ({ name: p.name + t(" · project"), icon: 'folder', run: () => workspace.selectProject(p.id) }));
   const connectionActions = [...config.servers.map(s => ({ name: s.name + ' · SSH', icon: 'server', run: () => newTab({ serverId: s.id }) })), ...savedConnections.map(s => ({ name: s.name + ' · ' + s.source, icon: 'server', run: () => newTab({ connectionId: s.id }) }))];
-  if (connectionsOnly) return [{ name: t("Local terminal"), icon: 'terminal', run: () => newTab() }, { name: 'Codex', icon: 'spark', run: () => newTab({ codex: true }) }, ...connectionActions, { name: t("Add a new server"), icon: 'plus', run: () => openServer() }];
+  if (connectionsOnly) return [{ name: t("Local terminal"), icon: 'terminal', run: () => newTab() }, { name: 'Codex', icon: 'spark', run: () => newTab({ codex: true }) }, { name: t('Resume Codex'), icon: 'spark', run: () => newTab({ codex: true, resume: true }) }, ...connectionActions, { name: t("Add a new server"), icon: 'plus', run: () => openServer() }];
   if (projectFilter) return [...projectActions, { name: t("Add a new project"), icon: 'plus', run: () => openProject() }];
   return [
     ...['new', 'codex', 'newWindow', 'split', 'splitVertical', 'projects', 'addProject', 'rename', 'close', 'closeTab', 'sidebar', 'settings'].map(id => ({ name: t(shortcutMap[id]?.label || id), icon: id === 'codex' ? 'spark' : id === 'newWindow' ? 'external' : id.toLowerCase().includes('project') ? 'folder' : id.startsWith('split') ? 'split' : 'terminal', key: shortcutMap[id]?.key, run: () => handleAction(id) })),
@@ -230,6 +232,7 @@ function actions() {
     { name: t("Add server"), icon: 'server', run: () => openServer() },
     ...config.servers.map(s => ({ name: `${s.name} · SSH`, icon: 'server', run: () => newTab({ serverId: s.id }) })),
     ...config.servers.map(s => ({ name: `${s.name} · SSH Codex`, icon: 'remoteCodex', run: () => newTab({ serverId: s.id, codex: true }) })),
+    { name: t('Resume Codex'), icon: 'spark', run: () => newTab({ codex: true, resume: true }) },
     { name: t("Effect settings"), icon: 'spark', run: openAtmosphere },
     { name: t("Edit config.json"), icon: 'code', run: () => api.editConfig() },
     { name: t("Import SSH config"), icon: 'download', run: importSSH },
@@ -288,6 +291,7 @@ $('#effects-button').oncontextmenu = event => { event.preventDefault(); openAtmo
 $('#effect-style').onchange = event => { config.appearance.effectStyle = event.target.value; applyAppearance(); save(); };
 $('#effect-intensity').oninput = event => { config.appearance.effectIntensity = Number(event.target.value) / 100; applyAppearance(); save(); };
 for (const [selector, key] of [['#effect-speed','effectSpeed'],['#effect-size','effectSize']]) $(selector).oninput = event => { config.appearance[key] = Number(event.target.value) / 100; applyAppearance(); save(); };
+$('#effect-count').oninput = event => { config.appearance.effectTrailCount = Number(event.target.value); applyAppearance(); save(); };
 $('#startup-home').onchange = event => { config.startupHome = event.target.checked; save(); };
 for (const [selector, key] of [['#effects-toggle','effects'],['#typing-effects','typingEffects'],['#ambient-effects','ambientEffects']]) $(selector).onchange = event => { config.appearance[key] = event.target.checked; applyAppearance(); save(); };
 $('#new-window').onclick = () => run(() => workspace.newWindow());

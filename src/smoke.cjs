@@ -45,6 +45,7 @@ module.exports = (win, app) => {
         assert.equal(await evaluate('window.__orbitEffectsSnapshot().speed'), 2.25);
         assert.equal(await evaluate('window.__orbitEffectsSnapshot().visibility'), 0.8);
         assert.equal(await evaluate('window.__orbitEffectsSnapshot().size'), 1.75);
+        assert.equal(await evaluate('window.__orbitEffectsSnapshot().count'), 12);
         assert.equal(await evaluate('getComputedStyle(document.body).getPropertyValue("--terminal-bg").trim()'), '#132839');
         assert((await evaluate('getComputedStyle(document.querySelector(".pane-group:not([hidden]) .xterm-rows")).fontFamily')).includes(expected.customFontFace));
         assert.equal(await evaluate('!!document.querySelector(".pane-group:not([hidden]) .split-node.vertical")'), true);
@@ -64,6 +65,7 @@ module.exports = (win, app) => {
           const loaded = await evaluate(`document.fonts.load('14px "${theme.fontName}"').then(faces => faces.length)`); assert(loaded > 0, `${theme.fontName} must load from the bundled fonts.`);
           assert((await evaluate('getComputedStyle(document.querySelector(".xterm-rows")).fontFamily')).includes(theme.fontName), 'The terminal must use the selected theme font, not just load it.');
           assert.equal(await evaluate(`document.body.classList.contains('theme-${id}')`), true); fonts.add(theme.fontName);
+          assert.equal(await evaluate('window.__orbitEffectsSnapshot().style'), require('./effect-profiles.cjs').themeStyles[id], 'Every built-in theme must select its matching atmosphere.');
         }
         assert.equal(fonts.size, 10);
         for (const font of [...require('./font-catalog.cjs').extraFonts, ...(await evaluate('window.orbit.init().then(value => value.localFonts)'))]) {
@@ -109,7 +111,13 @@ module.exports = (win, app) => {
         await evaluate(`(()=>{const slider=document.querySelector('#effect-intensity');slider.value=80;slider.dispatchEvent(new Event('input'));const size=document.querySelector('#effect-size');size.value=175;size.dispatchEvent(new Event('input'))})()`);
         assert.equal(await evaluate('window.__orbitEffectsSnapshot().visibility'), 0.8); assert.equal(await evaluate('window.__orbitEffectsSnapshot().size'), 1.75);
         if (process.env.ORBIT_EFFECT_CONTROLS_CAPTURE) { await evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))'); fs.writeFileSync(process.env.ORBIT_EFFECT_CONTROLS_CAPTURE, (await win.webContents.capturePage()).toPNG()); }
+        await evaluate(`(()=>{const count=document.querySelector('#effect-count');count.value=48;count.dispatchEvent(new Event('input'));const style=document.querySelector('#effect-style');style.value='matrix';style.dispatchEvent(new Event('change'))})()`);
         await evaluate('document.querySelector("#settings-dialog").close()');
+        await evaluate('document.querySelector("#effects-button").click();document.querySelector("#effects-button").click();document.querySelector(".pane-group:not([hidden]) .xterm-helper-textarea").focus()');
+        win.webContents.sendInputEvent({type:'keyDown',keyCode:'a'});win.webContents.sendInputEvent({type:'keyUp',keyCode:'a'});
+        if (!(await evaluate('window.__orbitEffectsSnapshot().reducedMotion'))) await until('window.__orbitEffectsSnapshot().rays === 48');
+        win.webContents.sendInputEvent({type:'keyDown',keyCode:'u',modifiers:['control']});win.webContents.sendInputEvent({type:'keyUp',keyCode:'u',modifiers:['control']});
+        await evaluate(`(()=>{const count=document.querySelector('#effect-count');count.value=12;count.dispatchEvent(new Event('input'));const style=document.querySelector('#effect-style');style.value='auto';style.dispatchEvent(new Event('change'))})()`);
         await evaluate('document.querySelector("#focus-mode-button").click()');
         await until('document.body.classList.contains("terminal-only")');
         assert.equal(await evaluate('getComputedStyle(document.querySelector(".titlebar")).display'), 'none');
@@ -132,9 +140,20 @@ module.exports = (win, app) => {
         await until('document.querySelector("#folder-name").textContent === "QA project" && document.querySelectorAll("[role=tab]").length === 1');
         await until('document.querySelector(".pane-group:not([hidden]) .xterm-screen").innerText.trim().length > 0');
         const originalId = await evaluate('document.querySelector(".pane-group:not([hidden]) .terminal-pane").dataset.sessionId');
+        await evaluate(`document.querySelector('#font-family').value='"MatrixType", monospace';document.querySelector('#font-family').dispatchEvent(new Event('change'))`);
+        await until('getComputedStyle(document.querySelector(".pane-group:not([hidden]) .xterm-rows")).fontFamily.includes("MatrixType")');
         await client.request('write', { id: originalId, data: process.platform === 'win32' ? "[Console]::Write([char]27+'[38;2;40;210;120mCOLOR_OK'+[char]27+'[0m')\r" : "printf '\\033[38;2;40;210;120mCOLOR_OK\\033[0m\\n'\r" });
         await until('document.querySelector(".pane-group:not([hidden]) .xterm-screen").innerText.includes("COLOR_OK")');
         try { await until('[...document.querySelectorAll(".pane-group:not([hidden]) .xterm-rows span")].some(el => el.textContent.trim() && getComputedStyle(el).color === "rgb(40, 210, 120)")'); } catch (error) { throw new Error(error.message + ' spans=' + JSON.stringify(await evaluate('[...document.querySelectorAll(".pane-group:not([hidden]) .xterm-rows span")].map(el => ({text:el.textContent,color:getComputedStyle(el).color}))'))); }
+        if (process.env.ORBIT_MATRIX_COLOR_CAPTURE) {
+          await client.request('write',{id:originalId,data:"printf '\\033[38;2;230;50;60mMATRIX_RED\\033[38;2;40;210;120m MATRIX_GREEN\\033[38;2;60;100;240m MATRIX_BLUE\\033[0m\\n'\r"});
+          await until('document.querySelector(".pane-group:not([hidden]) .xterm-screen").innerText.includes("MATRIX_BLUE")');
+          await evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+          const pixels=await win.webContents.capturePage();fs.writeFileSync(process.env.ORBIT_MATRIX_COLOR_CAPTURE,pixels.toPNG());
+          const bitmap=pixels.toBitmap();let red=0,green=0,blue=0;
+          for(let n=0;n<bitmap.length;n+=4){const b=bitmap[n],g=bitmap[n+1],r=bitmap[n+2];if(r>150&&r>g+80&&r>b+80)red++;if(g>140&&g>r+60&&g>b+40)green++;if(b>150&&b>r+80&&b>g+60)blue++;}
+          assert(red>10&&green>10&&blue>10,'MatrixType must render distinct red, green and blue pixels, not only correct DOM attributes.');
+        }
         if (process.platform === 'darwin') {
           await win.webContents.insertText("printf '\\nSHIFT_%s\\n' ENTER_OK;");
           win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['shift'] });

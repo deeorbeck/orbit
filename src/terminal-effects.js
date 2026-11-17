@@ -1,6 +1,6 @@
 import profiles from './effect-profiles.cjs';
 const { fontProfile, rayTarget } = profiles;
-const palettes = { cosmic: '#9acfff', matrix: '#75dca3', circuit: null, phosphor: '#a9d38c', ember: '#eeb47f', aurora: '#b8adf1' };
+const palettes = { cosmic: '#9acfff', matrix: '#75dca3', circuit: null, phosphor: '#a9d38c', ember: '#eeb47f', aurora: '#b8adf1', frost: '#b9dfe9', solar: '#c4b26b', ink: '#85714b' };
 const ease = n => 1 - (1 - n) ** 3;
 export class TerminalEffects {
   constructor(canvas, { preview = false, exposeDebug = true } = {}) {
@@ -11,7 +11,7 @@ export class TerminalEffects {
     window.addEventListener('blur', () => { this.active = false; this.lastTime = null; cancelAnimationFrame(this.frame); this.frame = 0; this.rays = []; });
     window.addEventListener('focus', () => { this.active = true; this.lastTime = null; this.wake(); });
     this.reduce.addEventListener('change', () => this.configure(this.last));
-    if (exposeDebug) window.__orbitEffectsSnapshot = () => ({ enabled: !!this.enabled, style: this.profile?.style, rays: this.rays.length, width: this.width, height: this.height, reducedMotion: this.reduce.matches, speed: this.prefs?.effectSpeed, visibility: this.prefs?.effectIntensity, size: this.prefs?.effectSize, motionTime: this.motionTime });
+    if (exposeDebug) window.__orbitEffectsSnapshot = () => ({ enabled: !!this.enabled, style: this.profile?.style, rays: this.rays.length, width: this.width, height: this.height, reducedMotion: this.reduce.matches, speed: this.prefs?.effectSpeed, visibility: this.prefs?.effectIntensity, size: this.prefs?.effectSize, count: this.prefs?.effectTrailCount, motionTime: this.motionTime });
   }
   resize() {
     const rect = this.canvas.parentElement.getBoundingClientRect(); this.width = rect.width; this.height = rect.height;
@@ -20,13 +20,13 @@ export class TerminalEffects {
   }
   configure(options) {
     if (!options) return; this.advance(performance.now()); this.last = options; this.prefs = options.appearance;
-    const profile = fontProfile(options.fontName, this.prefs.effectStyle);
+    const profile = fontProfile(options.fontName, this.prefs.effectStyle, options);
     if (this.profile?.seed !== profile.seed || this.profile?.style !== profile.style) {
       this.profile = profile; this.rays = []; let seed = profile.seed;
       const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
       this.nodes = Array.from({ length: this.preview ? 24 : 54 }, () => ({ x: random(), y: random(), phase: random() * Math.PI * 2, size: 0.4 + random() * 1.2, speed: 0.02 + random() * 0.025 }));
     }
-    this.enabled = this.prefs.effects && this.prefs.effectIntensity > 0 && !this.reduce.matches; this.color = options.light ? options.accent : palettes[profile.style] || options.accent; this.font = options.fontFamily;
+    this.enabled = this.prefs.effects && this.prefs.effectIntensity > 0 && !this.reduce.matches; this.color = options.light || this.prefs.effectStyle === 'auto' ? options.accent : palettes[profile.style] || options.accent; this.font = options.fontFamily;
     this.canvas.hidden = !this.enabled; this.canvas.dataset.profile = profile.style;
     if (!this.enabled) { this.rays = []; cancelAnimationFrame(this.frame); this.frame = 0; this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); }
     else { this.draw(performance.now()); this.wake(); }
@@ -51,11 +51,12 @@ export class TerminalEffects {
     if (wake) this.advance(performance.now());
     const now = this.motionTime, rotation = (this.profile.seed % 360) / 180 * Math.PI + (++this.burst * 0.47);
     // Abstract geometry only: never copy input text into effects (including passwords).
-    for (let i = 0; i < 5; i++) {
-      const angle = rotation + i * Math.PI * 2 / 5, end = rayTarget(x, y, angle, this.width, this.height);
-      this.rays.push({ x, y, end, start: now, duration: 1.35 + i * 0.09, bend: (i % 2 ? -1 : 1) * 0.045 });
+    const count = this.prefs.effectTrailCount || 16;
+    for (let i = 0; i < count; i++) {
+      const angle = rotation + i * Math.PI * 2 / count, end = rayTarget(x, y, angle, this.width, this.height);
+      this.rays.push({ x, y, end, start: now, duration: 1.35 + i / Math.max(1, count - 1) * 0.36, bend: (i % 2 ? -1 : 1) * 0.045 });
     }
-    this.rays = this.rays.slice(-100); if (wake) this.wake();
+    this.rays = this.rays.slice(-384); if (wake) this.wake();
   }
   point(ray, t) {
     const { x, y, end, bend } = ray, dx = end.x - x, dy = end.y - y;
@@ -83,6 +84,14 @@ export class TerminalEffects {
           if (i > 18) break; const next = this.nodes[(i + 1) % 19];
           ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (next.x * w - x) * 0.15, y); ctx.lineTo(x + (next.x * w - x) * 0.15, y + 18); ctx.stroke(); ctx.fillRect(x - size, y - size, 2 * size, 2 * size);
           const pulse = (time * 0.3 + n.phase) % 1; ctx.globalAlpha = strength * 0.45; ctx.beginPath(); ctx.arc(x + (next.x * w - x) * 0.15 * pulse, y, size, 0, Math.PI * 2); ctx.fill();
+        } else if (style === 'frost') {
+          const yy = (y + time * (3 + n.size)) % h, r = size * (1 + n.size);
+          ctx.beginPath(); ctx.moveTo(x - r, yy); ctx.lineTo(x + r, yy); ctx.moveTo(x, yy - r); ctx.lineTo(x, yy + r); ctx.stroke();
+        } else if (style === 'solar') {
+          if (i > 12) break; const r = size * (2 + n.size + Math.sin(time * 0.3 + n.phase));
+          ctx.beginPath(); ctx.arc(x, y + Math.sin(time * n.speed + n.phase) * 8, r, 0, Math.PI * 2); ctx.stroke();
+        } else if (style === 'ink') {
+          if (i > 16) break; ctx.globalAlpha = strength * 0.12; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 6 * size, y + Math.sin(time * 0.2 + n.phase) * 2); ctx.stroke();
         } else if (style === 'phosphor') {
           if (i > 9) break; ctx.globalAlpha = strength * 0.12; ctx.fillRect(0, (n.y * h + time * 3) % h, w, 0.6 * size);
         } else {
@@ -105,7 +114,7 @@ export class TerminalEffects {
       ctx.globalAlpha = strength * 0.9 * Math.sin(Math.PI * Math.min(1, progress * 1.1));
       ctx.beginPath(); const tail = this.point(ray, Math.max(0, t - 0.045)); ctx.moveTo(tail.x, tail.y); ctx.lineTo(head.x, head.y); ctx.stroke();
       ctx.globalAlpha *= 0.7; ctx.beginPath(); ctx.arc(head.x, head.y, size * (style === 'matrix' ? 1.4 : 1.2), 0, Math.PI * 2); ctx.fill();
-      if (style === 'cosmic' || style === 'aurora') { ctx.globalAlpha *= 0.3; ctx.beginPath(); ctx.arc(head.x, head.y, 4 * size, 0, Math.PI * 2); ctx.fill(); }
+      if (style === 'cosmic' || style === 'aurora' || style === 'solar') { ctx.globalAlpha *= 0.3; ctx.beginPath(); ctx.arc(head.x, head.y, 4 * size, 0, Math.PI * 2); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
   }

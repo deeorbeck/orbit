@@ -1,9 +1,11 @@
-function fontProfile(name, override = 'auto') {
+const themeStyles = { graphite: 'circuit', coding: 'circuit', modern: 'aurora', futuristic: 'cosmic', midnight: 'cosmic', warm: 'ember', dracula: 'aurora', nord: 'frost', solarized: 'solar', paper: 'ink' };
+function fontProfile(name, override = 'auto', context = {}) {
   const value = name.toLowerCase();
   let style = /matrix|asterisk/.test(value) ? 'matrix' : /vt323|cutive/.test(value) ? 'phosphor' : /orbitron|space mono|muar/.test(value) ? 'cosmic' : /betong|source code/.test(value) ? 'ember' : /victor|inconsolata/.test(value) ? 'aurora' : 'circuit';
-  if (override !== 'auto') style = override;
-  let seed = 2166136261; for (const char of value) seed = Math.imul(seed ^ char.charCodeAt(0), 16777619) >>> 0;
-  return { style, seed, cursorStyle: style === 'matrix' || style === 'phosphor' ? 'block' : style === 'ember' ? 'underline' : 'bar', cursorWidth: style === 'cosmic' ? 2 : 1 };
+  if (override === 'auto' && Object.hasOwn(themeStyles, context.baseTheme || context.themeId)) style = themeStyles[context.baseTheme || context.themeId];
+  else if (!['auto', 'font'].includes(override)) style = override;
+  let seed = 2166136261; for (const char of value + '|' + (context.themeId || '')) seed = Math.imul(seed ^ char.charCodeAt(0), 16777619) >>> 0;
+  return { style, seed, cursorStyle: style === 'matrix' || style === 'phosphor' ? 'block' : style === 'ember' || style === 'ink' ? 'underline' : 'bar', cursorWidth: style === 'cosmic' ? 2 : 1 };
 }
 function rayTarget(x, y, angle, width, height) {
   const dx = Math.cos(angle), dy = Math.sin(angle);
@@ -12,4 +14,4 @@ function rayTarget(x, y, angle, width, height) {
   const distance = Math.max(0, Math.min(tx, ty));
   return { x: Math.max(0, Math.min(width, x + dx * distance)), y: Math.max(0, Math.min(height, y + dy * distance)) };
 }
-module.exports = { fontProfile, rayTarget };
+module.exports = { fontProfile, rayTarget, themeStyles };

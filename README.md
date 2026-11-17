@@ -211,3 +211,7 @@ The expand button or **⌘⇧F / Ctrl+Alt+F** enables **Terminal only**: no titl
 New terminal sessions remove inherited runner no-color flags. Applications that were already running keep their existing environment; reopen/resume an existing Codex process when you want it to pick up the color change. Stored plain text is not retroactively recolored.
 
 Right-click the sparkle button (or Commands → **Effect settings**) to open Atmosphere directly. **Visibility** controls brightness from 0–100%, **Motion speed** changes ambient and typing movement from 0.25–3×, and **Particle size** changes their scale from 0.5–2.5×. A live preview shows the result immediately. These settings are saved automatically.
+
+**Trails per keystroke** controls each typing burst from 1–48 (default 16). **Match theme automatically** gives every bundled theme its own atmosphere, including Frost, Solar and Ink; custom themes follow their base theme and accent. **Match font automatically** and explicit styles are also available.
+
+To reopen an older no-color Codex conversation in a clean terminal, choose **Resume Codex** in the new-session picker or Commands. It opens the conversation picker without stopping existing sessions.

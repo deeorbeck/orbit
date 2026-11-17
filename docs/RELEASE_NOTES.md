@@ -1,3 +1,11 @@
+## Orbit Terminal 0.3.16 — denser trails and theme atmospheres
+
+- Set Trails per keystroke from 1–48. The default now emits 16 trails, with bounded rendering and consistent lifetimes.
+- All ten themes receive matching background and typing atmospheres. Custom themes follow their base design and accent; Match font and manual styles remain available.
+- Add Frost, Solar and Ink styles for Nord, Solarized and Paper.
+- Resume Codex from the session picker or Commands in a fresh true-color terminal while retaining conversation history.
+- Native tests verify MatrixType renders actual red/green/blue pixels, all theme profiles, exact trail counts and saved preferences.
+
 ## Orbit Terminal 0.3.15 — visible, adjustable motion
 
 - Control Visibility (0–100%), Motion speed (0.25–3×) and Particle size (0.5–2.5×) independently in Atmosphere.

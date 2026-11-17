@@ -4,13 +4,20 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { fontProfile, rayTarget } = require('../src/effect-profiles.cjs');
+const { fontProfile, rayTarget, themeStyles } = require('../src/effect-profiles.cjs');
 const { terminalEnv, colorShell } = require('../src/platform.cjs');
 const { normalize } = require('../src/config.cjs');
 
 test('font profiles are deterministic, distinct and produce bounded edge destinations', () => {
   assert.equal(fontProfile('MatrixType').style, 'matrix'); assert.equal(fontProfile('Orbitron').style, 'cosmic');
   assert.notEqual(fontProfile('Muar Regular').seed, fontProfile('Muar Stencil').seed);
+  assert.equal(Object.keys(themeStyles).length, 10);
+  assert.equal(fontProfile('MatrixType', 'auto', { themeId: 'nord' }).style, 'frost');
+  assert.equal(fontProfile('MatrixType', 'font', { themeId: 'nord' }).style, 'matrix');
+  assert.equal(fontProfile('Muar', 'auto', { themeId: 'custom-my', baseTheme: 'paper' }).style, 'ink');
+  assert.equal(normalize().appearance.effectTrailCount, 16);
+  assert.equal(normalize({ appearance: { effectTrailCount: 99 } }).appearance.effectTrailCount, 48);
+  assert.equal(normalize({ appearance: { effectTrailCount: -4 } }).appearance.effectTrailCount, 1);
   assert.equal(fontProfile('VT323').cursorStyle, 'block'); assert.equal(fontProfile('MatrixType', 'cosmic').style, 'cosmic');
   for (let angle = 0; angle < Math.PI * 2; angle += 0.1) {
     const p = rayTarget(230, 180, angle, 900, 600);

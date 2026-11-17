@@ -147,6 +147,7 @@ else {
         if (connection.kind === 'shell-alias') aliasName = connection.aliasName;
         else { serverId = connection.id; sessionConfig = normalize({ ...config, servers: [...config.servers, { id: serverId, name: connection.name, host: connection.host, port: 22, persistent: false, autoReconnect: false }] }); }
       }
+      if (options.codex && options.resume && !serverId && !aliasName) sessionConfig = { ...sessionConfig, codexCommand: `${sessionConfig.codexCommand} resume` };
       const sourceRemoteSession = sourceSession?.serverId === serverId ? sourceSession?.sessionName : null;
       return backend.request('create', { id: randomUUID(), options: { projectId: project.id, windowId: windowId(win), serverId, aliasName, sourceRemoteSession, codex: !!options.codex, cwd, config: colorShell(sessionConfig, app.getPath('userData')) } });
     });
