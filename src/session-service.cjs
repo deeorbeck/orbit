@@ -51,6 +51,7 @@ async function main(directory) {
     const terminal = new Terminal({ cols: metadata.cols || 100, rows: metadata.rows || 30, allowProposedApi: true, scrollback: 10000, logLevel: 'off' });
     const serialize = new SerializeAddon(); terminal.loadAddon(serialize);
     const s = { info: metadata, options, terminal, serialize, cwd: metadata.cwd, status: 'stopped', seq: 0, exitCode: metadata.exitCode, clients: new Set(), wasConnected: false, reconnectAttempts: 0 };
+    terminal.onTitleChange(title => { if (s.deleted) return; s.info.title = title; emit('status', info(s)); schedulePersist(s); });
     terminal.onData(data => { try { s.pty?.write(data); } catch {} });
     terminal.parser.registerOscHandler(7, value => { try { const uri = new URL(value); if (uri.protocol === 'file:') { let cwd = decodeURIComponent(uri.pathname); if (process.platform === 'win32' && !options.serverId && !options.aliasName) cwd = cwd.replace(/^\/([A-Za-z]:)/, '$1').replaceAll('/', '\\'); applyCwd(s, cwd); } } catch {} return true; });
     terminal.parser.registerOscHandler(9, value => { if (value.startsWith('9;')) applyCwd(s, value.slice(2).replace(/^"|"$/g, '')); return true; });

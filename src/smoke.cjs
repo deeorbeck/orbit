@@ -140,6 +140,7 @@ module.exports = (win, app) => {
         await until('document.querySelector("#folder-name").textContent === "QA project" && document.querySelectorAll("[role=tab]").length === 1');
         await until('document.querySelector(".pane-group:not([hidden]) .xterm-screen").innerText.trim().length > 0');
         const originalId = await evaluate('document.querySelector(".pane-group:not([hidden]) .terminal-pane").dataset.sessionId');
+        assert.equal(await evaluate('getComputedStyle(document.querySelector(".pane-group:not([hidden]) .pane-label")).display'), 'none');
         await evaluate(`document.querySelector('#font-family').value='"MatrixType", monospace';document.querySelector('#font-family').dispatchEvent(new Event('change'))`);
         await until('getComputedStyle(document.querySelector(".pane-group:not([hidden]) .xterm-rows")).fontFamily.includes("MatrixType")');
         await client.request('write', { id: originalId, data: process.platform === 'win32' ? "[Console]::Write([char]27+'[38;2;40;210;120mCOLOR_OK'+[char]27+'[0m')\r" : "printf '\\033[38;2;40;210;120mCOLOR_OK\\033[0m\\n'\r" });
@@ -168,6 +169,7 @@ module.exports = (win, app) => {
         const command = process.platform === 'win32' ? `$global:ORBIT_KEEP='kept'; Set-Location -LiteralPath '${childFolder.replaceAll("'", "''")}'; Write-Output ('DESKTOP_STATE:'+$global:ORBIT_KEEP)` : `export ORBIT_KEEP=kept; cd '${childFolder.replaceAll("'", "'\\''")}'; printf '\\nDESKTOP_STATE:%s\\n' "$ORBIT_KEEP"`;
         await sendCommand(command);
         await until(async () => (await client.request('attach', { id: originalId })).snapshot.includes('DESKTOP_STATE:kept'));
+        await until('document.querySelector("[role=tab][aria-selected=true] .tab-name").textContent === "active-folder"');
         await evaluate('document.querySelector("#add-tab").click(); [...document.querySelectorAll(".palette-result")].find(el => el.textContent.includes("Local terminal")).click()');
         await until('document.querySelectorAll("[role=tab]").length === 2');
         const cloneId = await evaluate('document.querySelector(".pane-group:not([hidden]) .terminal-pane").dataset.sessionId');
@@ -197,11 +199,12 @@ module.exports = (win, app) => {
         arrow('Down');
         await until(async () => await activeId() === paneIds[2]);
         const config = await evaluate('window.orbit.init().then(value => value.config)');
-        config.codexCommand = `node -e "console.log('CODEX_TEST_READY');setInterval(()=>{},1000)"`; config.appearance.theme = 'coding';
+        config.codexCommand = `node -e "console.log('CODEX_TEST_READY');process.stdout.write('\\x1b]2;QA conversation | project\\x07');setInterval(()=>{},1000)"`; config.appearance.theme = 'coding';
         await evaluate(`window.orbit.save(${JSON.stringify(config)})`);
         await evaluate('document.querySelector("#new-codex").click()');
         await until('!!document.querySelector(".pane-group:not([hidden]) [data-kind=codex]")');
         await until('document.querySelector(".pane-group:not([hidden]) .xterm-screen").innerText.includes("CODEX_TEST_READY")');
+        await until('document.querySelector("[role=tab][aria-selected=true] .tab-name").textContent === "QA conversation"');
         const shiftWrites = [];
         const captureShift = (_event, value) => shiftWrites.push(value.data);
         ipcMain.on('terminal:write', captureShift);

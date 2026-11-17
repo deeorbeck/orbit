@@ -79,3 +79,5 @@ body[data-effects=true][data-effect-style=matrix] .xterm-cursor,body[data-effect
 @media(prefers-reduced-motion:reduce){.effects-canvas{display:none!important}.xterm-cursor{filter:none!important;box-shadow:none!important}}
 
 .effect-preview{position:relative;height:126px;margin:16px 0 12px;overflow:hidden;border:1px solid var(--line);border-radius:7px;background:var(--terminal-bg)}.effect-preview canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.effect-preview-label{position:absolute;left:14px;top:12px;color:var(--faint);font-size:9px;letter-spacing:1px;text-transform:uppercase}.effect-preview-text{position:absolute;left:16px;top:66px;color:var(--accent);font-size:12px;pointer-events:none}.effect-preview-text span{color:var(--text)}
+
+.pane-group:not(.split) .pane-label{display:none}.tab-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

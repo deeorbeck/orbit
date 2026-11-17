@@ -1,3 +1,5 @@
+import titles from './session-titles.cjs';
+const { sessionTitle } = titles;
 import navigation from './pane-navigation.cjs';
 import { t } from './i18n-dom.js';
 import { Terminal } from '@xterm/xterm';
@@ -24,7 +26,7 @@ export class WorkspaceUI {
     this.knownSessions = new Map(initial.sessions.map(s => [s.id, s]));
     this.ownedIds = new Set(initial.sessions.filter(s => s.windowId === this.window.id).map(s => s.id));
     api.onData(event => this.handleData(event));
-    api.onCwd(event => { const p = this.panes.get(event.id); if (p) { p.info.cwd = event.cwd; this.renderPane(p); } });
+    api.onCwd(event => { const p = this.panes.get(event.id); if (p) { p.info.cwd = event.cwd; this.renderPane(p); this.renderTabs(); } });
     api.onExit(event => this.handleExit(event)); api.onStatus(event => this.setStatus(event));
     api.onRemoved(({ id }) => { if (this.panes.has(id)) this.removeLocal([id]); });
     api.onProjects(projects => { this.projects = projects; this.renderProjects(); });
@@ -75,6 +77,7 @@ export class WorkspaceUI {
     for (const value of saved.tabs) {
       const group = document.createElement('div'); group.className = 'pane-group'; group.hidden = true; $('#workspaces').append(group);
       const tab = { ...value, group, projectId: id };
+      if (['Terminal', 'Codex', 'Codex · colors'].includes(tab.title)) tab.customTitle = false;
       state.tabs.push(tab);
       for (const sessionId of leafIds(value.layout)) {
         this.ownedIds.add(sessionId);
@@ -130,6 +133,7 @@ export class WorkspaceUI {
     const root = $('#tabs'); root.replaceChildren();
     for (const tab of this.tabs) {
       const p = this.panes.get(tab.activePaneId);
+      if (p && !tab.customTitle) tab.title = sessionTitle(p.info, p.liveTitle);
       const el = document.createElement('div'); el.className = 'tab'; el.tabIndex = tab.id === this.state().activeTabId ? 0 : -1; el.setAttribute('role', 'tab'); el.setAttribute('aria-selected', String(tab.id === this.state().activeTabId));
       const symbol = document.createElement('span'); symbol.className = 'tab-kind ' + (p ? this.kind(p) : 'terminal'); symbol.innerHTML = p ? this.kindIcon(p) : this.icon('terminal');
       const title = document.createElement('span'); title.className = 'tab-name'; title.textContent = tab.title;
@@ -173,7 +177,7 @@ export class WorkspaceUI {
     for (const intermediates of ['$', '+']) term.parser.registerDcsHandler({ intermediates, final: 'q' }, () => true);
     this.panes.set(info.id, pane);
     term.onData(data => { if (pane.info.status === 'running') this.api.write(info.id, data); });
-    term.onTitleChange(title => { el.title = title; });
+    term.onTitleChange(title => { const previous = sessionTitle(pane.info, pane.liveTitle); pane.liveTitle = title; el.title = title; if (sessionTitle(pane.info, title) !== previous) { this.renderPane(pane); this.renderTabs(); this.run(() => this.save(tab.projectId)); } });
     term.onKey(({ domEvent: event }) => {
       if (event.isComposing || event.metaKey || event.ctrlKey || event.altKey || event.key.length !== 1) return;
       const screen = $('.xterm-screen', el).getBoundingClientRect(), area = $('#terminal-area').getBoundingClientRect();
@@ -226,6 +230,7 @@ export class WorkspaceUI {
     pane.kind.className = 'pane-kind ' + this.kind(pane); pane.kind.innerHTML = this.kindIcon(pane);
     const label = document.createElement('span'); label.textContent = this.kindName(pane); pane.kind.append(label);
     pane.el.dataset.kind = this.kind(pane); pane.el.dataset.sessionId = pane.id;
+    $('.pane-kind span', pane.el).textContent = sessionTitle(pane.info, pane.liveTitle);
     pane.cwd.textContent = this.shortPath(pane.info.cwd); pane.cwd.title = pane.info.cwd;
     pane.status.textContent = pane.info.status === 'running' ? '●' : pane.info.status === 'reconnecting' ? '↻' : '○';
     pane.status.title = pane.info.status === 'running' ? t("Process keeps running in the background") : t("Session stopped");
@@ -251,7 +256,7 @@ export class WorkspaceUI {
     const info = this.panes.get(event.id)?.info;
     if (info && (info.exitCode === 0 || (!info.serverId && !info.aliasName && !info.codex))) this.run(() => this.endPane(event.id));
   }
-  setStatus(info) { const p = this.panes.get(info.id); if (p) { if (p.restoring) p.pendingStatus = { ...p.pendingStatus, ...info }; p.info = { ...p.info, ...info }; this.renderPane(p); } }
+  setStatus(info) { const p = this.panes.get(info.id); if (p) { if (p.restoring) p.pendingStatus = { ...p.pendingStatus, ...info }; p.info = { ...p.info, ...info }; this.renderPane(p); this.renderTabs(); } }
   layout(tab) {
     const render = node => {
       if (node.type === 'leaf') return this.panes.get(node.sessionId)?.el || document.createElement('div');

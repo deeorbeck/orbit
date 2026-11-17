@@ -1,3 +1,10 @@
+## Orbit Terminal 0.3.18 — meaningful tab names
+
+- Name ordinary tabs after their current folder and update them when the directory changes.
+- Show CLI/Codex conversation titles instead of the generic Terminal label, removing activity spinners and redundant project suffixes.
+- Hide the redundant session header for a single-pane terminal. Split panes retain compact labels and close controls.
+- Preserve manual names and persist CLI titles with session snapshots.
+
 ## Orbit Terminal 0.3.17 — colors for ordinary terminals and every CLI
 
 - Clear standard inherited Node/Python/no-color flags for all PTYs, including ordinary terminal tabs and commands typed manually.
