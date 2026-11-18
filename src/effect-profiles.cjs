@@ -23,4 +23,11 @@ function trailTargets(count, width, height, burst) {
     }
   });
 }
-module.exports = { fontProfile, trailTargets, themeStyles };
+function rayTarget(x, y, angle, width, height) {
+  const dx = Math.cos(angle), dy = Math.sin(angle);
+  const tx = Math.abs(dx) < 1e-8 ? Infinity : ((dx > 0 ? width : 0) - x) / dx;
+  const ty = Math.abs(dy) < 1e-8 ? Infinity : ((dy > 0 ? height : 0) - y) / dy;
+  const distance = Math.max(0, Math.min(tx, ty));
+  return { x: Math.max(0, Math.min(width, x + dx * distance)), y: Math.max(0, Math.min(height, y + dy * distance)) };
+}
+module.exports = { fontProfile, rayTarget, trailTargets, themeStyles };

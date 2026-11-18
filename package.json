@@ -1,7 +1,7 @@
 {
   "name": "orbit-terminal",
   "productName": "Orbit Terminal",
-  "version": "0.3.20",
+  "version": "0.3.21",
   "description": "An open-source desktop terminal for Codex, SSH servers and persistent workspaces",
   "main": "src/main.cjs",
   "private": true,
