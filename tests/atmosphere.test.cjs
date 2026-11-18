@@ -27,15 +27,20 @@ test('font profiles are deterministic and distinct', () => {
   assert.equal(motion.appearance.effectSpeed, 3); assert.equal(motion.appearance.effectSize, 0.5); assert.equal(motion.appearance.effectIntensity, 0); assert.equal(config.appearance.effectStyle, 'auto'); assert.equal(config.appearance.effects, false);
 });
 
-test('typing bursts expand in evenly spaced directions from a corner', () => {
-  const x = 7, y = 354, radius = 290;
-  for (const count of [1, 3, 7, 16, 48]) {
-    const targets = radialTargets(x, y, count, 0.37, radius);
-    const spacing = 2 * radius * Math.sin(Math.PI / count);
-    for (const [index, point] of targets.entries()) {
-      const next = targets[(index + 1) % count];
-      assert(Math.abs(Math.hypot(point.x - x, point.y - y) - radius) < 0.00001);
-      assert(Math.abs(Math.hypot(point.x - next.x, point.y - next.y) - spacing) < 0.00001);
+test('each evenly spaced typing ray reaches the pane edge from the center or a corner', () => {
+  const width = 1440, height = 360;
+  for (const [x, y] of [[720, 180], [7, 354], [1437, 352]]) {
+    for (const count of [1, 7, 16, 48]) {
+      const rotation = 0.37;
+      const targets = radialTargets(x, y, count, rotation, width, height);
+      for (const [index, point] of targets.entries()) {
+        assert(point.x >= 0 && point.x <= width && point.y >= 0 && point.y <= height);
+        assert(Math.min(point.x, point.y, width - point.x, height - point.y) < 0.00001);
+        const angle = rotation + index * 2 * Math.PI / count;
+        const direction = Math.atan2(point.y - y, point.x - x);
+        assert(Math.abs(Math.sin(angle - direction)) < 0.00001);
+        assert(Math.cos(angle - direction) > 0.99999);
+      }
     }
   }
 });

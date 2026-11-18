@@ -7,10 +7,17 @@ function fontProfile(name, override = 'auto', context = {}) {
   let seed = 2166136261; for (const char of value + '|' + (context.themeId || '')) seed = Math.imul(seed ^ char.charCodeAt(0), 16777619) >>> 0;
   return { style, seed, cursorStyle: style === 'matrix' || style === 'phosphor' ? 'block' : style === 'ember' || style === 'ink' ? 'underline' : 'bar', cursorWidth: style === 'cosmic' ? 2 : 1 };
 }
-function radialTargets(x, y, count, rotation, radius) {
+function radialTargets(x, y, count, rotation, width, height) {
   return Array.from({ length: count }, (_, index) => {
     const angle = rotation + index * 2 * Math.PI / count;
-    return { x: x + Math.cos(angle) * radius, y: y + Math.sin(angle) * radius };
+    const dx = Math.cos(angle), dy = Math.sin(angle);
+    const edgeX = Math.abs(dx) < 1e-8 ? Infinity : ((dx > 0 ? width : 0) - x) / dx;
+    const edgeY = Math.abs(dy) < 1e-8 ? Infinity : ((dy > 0 ? height : 0) - y) / dy;
+    const distance = Math.min(edgeX, edgeY);
+    return {
+      x: Math.max(0, Math.min(width, x + dx * distance)),
+      y: Math.max(0, Math.min(height, y + dy * distance)),
+    };
   });
 }
 module.exports = { fontProfile, radialTargets, themeStyles };

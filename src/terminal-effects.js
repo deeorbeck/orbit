@@ -1,7 +1,8 @@
 import profiles from './effect-profiles.cjs';
 const { fontProfile, radialTargets } = profiles;
 const palettes = { cosmic: '#9acfff', matrix: '#75dca3', circuit: null, phosphor: '#a9d38c', ember: '#eeb47f', aurora: '#b8adf1', frost: '#b9dfe9', solar: '#c4b26b', ink: '#85714b' };
-const ease = n => 1 - (1 - n) ** 3;
+const edgeFade = 0.14;
+const bound = (value, max) => Math.max(0, Math.min(max, value));
 export class TerminalEffects {
   constructor(canvas, { preview = false, exposeDebug = true } = {}) {
     this.preview = preview; this.motionTime = 0; this.lastTime = null;
@@ -52,16 +53,25 @@ export class TerminalEffects {
     const now = this.motionTime, rotation = (this.profile.seed % 360) / 180 * Math.PI + (++this.burst * 0.47);
     // Abstract geometry only: never copy input text into effects (including passwords).
     const count = this.prefs.effectTrailCount || 16;
-    const radius = Math.hypot(this.width, this.height) * 0.57;
-    for (const [i, end] of radialTargets(x, y, count, rotation, radius).entries()) {
-      this.rays.push({ x, y, end, start: now, duration: 1.45, bend: (i % 2 ? -1 : 1) * 0.045 });
+    const speed = Math.hypot(this.width, this.height) / 1.35;
+    const straight = this.profile.style === 'matrix' || this.profile.style === 'phosphor';
+    for (const [i, end] of radialTargets(x, y, count, rotation, this.width, this.height).entries()) {
+      const dx = end.x - x, dy = end.y - y;
+      const distance = Math.hypot(dx, dy);
+      const travel = distance / speed;
+      const bend = straight ? 0 : (i % 2 ? -1 : 1) * 0.08;
+      const controlX = bound(x + dx / 2 - dy * bend, this.width);
+      const controlY = bound(y + dy / 2 + dx * bend, this.height);
+      this.rays.push({ x, y, end, controlX, controlY, distance, start: now, travel });
     }
     this.rays = this.rays.slice(-384); if (wake) this.wake();
   }
   point(ray, t) {
-    const { x, y, end, bend } = ray, dx = end.x - x, dy = end.y - y;
-    const curve = this.profile.style === 'matrix' || this.profile.style === 'phosphor' ? 0 : Math.sin(t * Math.PI) * bend;
-    return { x: x + dx * t - dy * curve, y: y + dy * t + dx * curve };
+    const u = 1 - t;
+    return {
+      x: u ** 2 * ray.x + 2 * u * t * ray.controlX + t ** 2 * ray.end.x,
+      y: u ** 2 * ray.y + 2 * u * t * ray.controlY + t ** 2 * ray.end.y,
+    };
   }
   draw(now) {
     if (!this.ctx || !this.profile || !this.width) return;
@@ -108,14 +118,17 @@ export class TerminalEffects {
         ctx.beginPath(); ctx.moveTo(0, h * (0.7 + i * 0.1) + shift); ctx.bezierCurveTo(w * 0.3, h * 0.95, w * 0.6, h * 0.3 + shift, w, h * 0.65 + shift); ctx.stroke();
       }
     }
-    this.rays = this.rays.filter(ray => time - ray.start < ray.duration);
+    this.rays = this.rays.filter(ray => time - ray.start < ray.travel + edgeFade);
     for (const ray of this.rays) {
-      const progress = Math.min(1, (time - ray.start) / ray.duration), t = ease(progress), head = this.point(ray, t);
-      const clearance = Math.min(head.x, head.y, w - head.x, h - head.y);
-      if (clearance <= -4) continue;
-      const edgeOpacity = Math.min(1, (clearance + 4) / 15);
-      ctx.globalAlpha = edgeOpacity * strength * 0.9 * Math.sin(Math.PI * Math.min(1, progress * 1.1));
-      ctx.beginPath(); const tail = this.point(ray, Math.max(0, t - 0.045)); ctx.moveTo(tail.x, tail.y); ctx.lineTo(head.x, head.y); ctx.stroke();
+      if (ray.distance < 1) continue;
+      const age = time - ray.start;
+      const t = Math.min(1, age / ray.travel), head = this.point(ray, t);
+      const fadeIn = Math.min(1, age / 0.075);
+      const fadeOut = 1 - bound((age - ray.travel) / edgeFade, 1);
+      // Short paths at the prompt fade quietly while longer rays keep moving.
+      ctx.globalAlpha = strength * 0.9 * fadeIn * fadeOut * Math.min(1, ray.distance / 32);
+      const tail = this.point(ray, Math.max(0, t - 0.045));
+      ctx.beginPath(); ctx.moveTo(tail.x, tail.y); ctx.lineTo(head.x, head.y); ctx.stroke();
       ctx.globalAlpha *= 0.7; ctx.beginPath(); ctx.arc(head.x, head.y, size * (style === 'matrix' ? 1.4 : 1.2), 0, Math.PI * 2); ctx.fill();
       if (style === 'cosmic' || style === 'aurora' || style === 'solar') { ctx.globalAlpha *= 0.3; ctx.beginPath(); ctx.arc(head.x, head.y, 4 * size, 0, Math.PI * 2); ctx.fill(); }
     }
