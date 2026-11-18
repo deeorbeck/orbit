@@ -61,7 +61,7 @@ async function main(directory) {
     sessions.set(metadata.id, s); return s;
   };
   for (const file of fs.readdirSync(storage).filter(f => /^[a-f0-9-]{36}\.json$/.test(f))) {
-    try { const saved = JSON.parse(fs.readFileSync(path.join(storage, file), 'utf8')); const s = makeRecord(saved.info, saved.options, saved.snapshot); s.status = 'stopped'; } catch (e) { console.error('Read snapshot:', e.message); }
+    try { const saved = JSON.parse(fs.readFileSync(path.join(storage, file), 'utf8')); const s = makeRecord(saved.info, saved.options, saved.snapshot); s.status = saved.info.status === 'exited' ? 'exited' : 'stopped'; } catch (e) { console.error('Read snapshot:', e.message); }
   }
   const checkIdle = () => {
     clearTimeout(idleTimer);
@@ -103,6 +103,9 @@ async function main(directory) {
     const environment = terminalEnv(require('../package.json').version);
     delete environment.ORBIT_SMOKE_TEST;
     const child = pty.spawn(executable, args, { name: 'xterm-256color', cols: s.terminal.cols, rows: s.terminal.rows, cwd, env: environment });
+    if (s.status === 'stopped' && s.terminal.buffer.active.type === 'alternate') {
+      s.terminal.write('\x1b[?1049l');
+    }
     s.pty = child; s.status = 'running'; s.exitCode = null; clearTimeout(s.reconnectTimer);
     emit('status', { id: s.info.id, ...info(s) }); persist(s);
     child.onData(data => {
@@ -189,7 +192,16 @@ async function main(directory) {
     client.on('close', () => { clearTimeout(authTimer); clients.delete(client); checkIdle(); });
   });
   function shutdown(kill) {
-    for (const s of sessions.values()) { clearTimeout(s.saveTimer); clearTimeout(s.reconnectTimer); persist(s); if (kill) { s.deleted = true; try { s.pty?.kill(); } catch {} } }
+    for (const s of sessions.values()) {
+      clearTimeout(s.saveTimer);
+      clearTimeout(s.reconnectTimer);
+      if (kill) s.status = 'exited';
+      persist(s);
+      if (kill) {
+        s.deleted = true;
+        try { s.pty?.kill(); } catch {}
+      }
+    }
     for (const client of clients) client.destroy();
     server.close(() => { try { fs.rmSync(lock, { recursive: true }); } catch {} process.exit(0); });
   }

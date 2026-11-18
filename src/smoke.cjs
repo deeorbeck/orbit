@@ -33,6 +33,17 @@ module.exports = (win, app) => {
         await until('!!window.__orbitWorkspaceSnapshot?.() && document.querySelectorAll("[role=tab]").length === 3');
         assert.equal(await evaluate('document.body.dataset.theme'), expected.customThemeId);
         console.log('ORBIT_HOME_PASS: one home window, no new PTY, saved tabs and processes available on Continue');
+      } else if (process.env.ORBIT_SMOKE_PHASE === 'cold') {
+        const expected = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+        const { info, snapshot } = await client.request('attach', { id: expected.originalId });
+        assert.equal(info.status, 'running');
+        assert.notEqual(info.pid, expected.sessions.find(s => s.id === info.id).pid);
+        assert.equal(fs.realpathSync.native(info.cwd), fs.realpathSync.native(expected.childFolder));
+        assert(snapshot.includes('DESKTOP_STATE:kept'));
+        const command = process.platform === 'win32' ? "Write-Output ('COLD_' + 'READY')" : "printf '\\nCOLD_%s\\n' READY";
+        await client.request('write', { id: info.id, data: command + '\r' });
+        await until(async () => (await client.request('attach', { id: info.id })).snapshot.includes('COLD_READY'));
+        console.log('ORBIT_COLD_PASS: interrupted shell accepts input in its previous folder');
       } else if (process.env.ORBIT_SMOKE_PHASE === 'restore') {
         const expected = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
         const sessions = await client.request('list');

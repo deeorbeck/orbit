@@ -58,7 +58,7 @@ test('service rejects connections without the private per-user token', { timeout
     if (process.platform !== 'win32') assert.equal(fs.statSync(path.join(data, 'service.token')).mode & 0o777, 0o600);
   } finally { await client.request('shutdown'); client.disconnect(); await delay(100); fs.rmSync(data, { recursive: true, force: true, maxRetries: 30, retryDelay: 100 }); }
 });
-test('a stopped service restores a private screen snapshot without pretending its old process is alive', { timeout: 20000 }, async () => {
+test('an explicitly ended session restores its screen without pretending its old process is alive', { timeout: 20000 }, async () => {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'orbit-cold-'));
   const { defaults } = require('../src/config.cjs');
   const { randomUUID } = require('node:crypto');
@@ -73,7 +73,7 @@ test('a stopped service restores a private screen snapshot without pretending it
     await until(async () => !fs.existsSync(path.join(data, 'service.lock')));
     client = await new SessionClient(data).start();
     const recovered = await client.request('attach', { id });
-    assert.equal(recovered.info.status, 'stopped'); assert.equal(recovered.info.pid, null);
+    assert.equal(recovered.info.status, 'exited'); assert.equal(recovered.info.pid, null);
     assert(recovered.snapshot.includes('SCREEN:orbit-🌗-o‘zbek'));
     const restarted = await client.request('restart', { id, config });
     assert.equal(restarted.status, 'running'); assert.notEqual(restarted.pid, original.pid);

@@ -20,6 +20,7 @@ app.setPath('userData', process.env.ORBIT_TEST_DATA || path.join(app.getPath('ap
 protocol.registerSchemesAsPrivileged([{ scheme: 'orbit', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 const windows = new Map();
 const subscriptions = new Map();
+const recoveringSessions = new Map();
 let config, configFile, wallpaperFile, watcher, backend, workspaces;
 let smokeStarted = false;
 let catalog = [], catalogAt = 0;
@@ -159,8 +160,22 @@ else {
       return imported;
     });
     safeHandle('connection:list', () => refreshCatalog());
-    safeHandle('terminal:attach', (win, id) => {
+    safeHandle('terminal:attach', async (win, id) => {
       const key = windowId(win); if (!subscriptions.has(key)) subscriptions.set(key, new Set()); subscriptions.get(key).add(id);
+      const attached = await backend.request('attach', { id });
+      const info = attached?.info;
+      // A live PTY needs only reattachment. After a reboot, open a fresh shell
+      // in the saved folder without rerunning a Codex command or SSH alias.
+      if (info?.status !== 'stopped' || info.codex || info.serverId || info.aliasName) return attached;
+
+      let recovery = recoveringSessions.get(id);
+      if (!recovery) {
+        recovery = backend.request('restart', { id, config: colorShell(config, app.getPath('userData')) })
+          .catch(error => console.error('Could not restore shell:', error.message))
+          .finally(() => recoveringSessions.delete(id));
+        recoveringSessions.set(id, recovery);
+      }
+      await recovery;
       return backend.request('attach', { id });
     });
     safeHandle('terminal:cwd', (_win, id) => backend.request('cwd', { id }));

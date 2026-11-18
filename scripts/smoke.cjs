@@ -27,8 +27,33 @@ function launch(phase) {
     child.on('exit', code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error(`Desktop ${phase} exited with code ${code}.`)); });
   });
 }
+async function simulateReboot() {
+  const client = await new SessionClient(data).connect();
+  const { originalId } = JSON.parse(fs.readFileSync(path.join(data, 'smoke-state.json')));
+  const screenFile = path.join(data, 'screens', `${originalId}.json`);
+  const interrupted = fs.readFileSync(screenFile);
+  await client.request('shutdown');
+  client.disconnect();
+  const lock = path.join(data, 'service.lock');
+  for (let i = 0; i < 50 && fs.existsSync(lock); i++) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  if (fs.existsSync(lock)) throw new Error('Test service did not shut down.');
+  // Leave the last running snapshot in place, as after an abrupt shutdown.
+  fs.writeFileSync(screenFile, interrupted);
+}
+
 (async () => {
-  try { await launch('create'); await new Promise(resolve => setTimeout(resolve, 500)); await launch('restore'); const saved = JSON.parse(fs.readFileSync(path.join(data, 'config.json'))); saveConfig(path.join(data, 'config.json'), { ...saved, startupHome: true }); await launch('home'); }
+  try {
+    await launch('create');
+    await launch('restore');
+    const saved = JSON.parse(fs.readFileSync(path.join(data, 'config.json')));
+    saveConfig(path.join(data, 'config.json'), { ...saved, startupHome: true });
+    await launch('home');
+    await simulateReboot();
+    saveConfig(path.join(data, 'config.json'), { ...saved, startupHome: false });
+    await launch('cold');
+  }
   catch (error) { console.error(error.message); process.exitCode = 1; }
   finally {
     try { const client = await new SessionClient(data).connect(); await client.request('shutdown'); client.disconnect(); await new Promise(resolve => setTimeout(resolve, 300)); } catch {}

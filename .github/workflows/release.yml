@@ -54,7 +54,22 @@ jobs:
         if: runner.os != 'Linux'
         run: npm run smoke
       - name: Build installers
+        if: runner.os != 'macOS'
         run: npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish never
+      - name: Build Mac installers
+        if: runner.os == 'macOS'
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          CSC_NAME: ${{ vars.MAC_CSC_NAME }}
+        shell: bash
+        run: |
+          signing=()
+          if [[ -n "$CSC_LINK" ]]; then
+            : "${CSC_NAME:?Set MAC_CSC_NAME to the Developer ID certificate name or team ID}"
+            signing+=("-c.mac.identity=$CSC_NAME" "-c.mac.hardenedRuntime=true" "-c.forceCodeSigning=true")
+          fi
+          npx electron-builder --mac --${{ matrix.arch }} --publish never "${signing[@]}"
       - name: Test packaged desktop app (Linux)
         if: runner.os == 'Linux'
         env:
