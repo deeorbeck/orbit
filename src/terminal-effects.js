@@ -1,8 +1,7 @@
 import profiles from './effect-profiles.cjs';
-const { fontProfile, rayTarget, trailTargets } = profiles;
+const { fontProfile, radialTargets } = profiles;
 const palettes = { cosmic: '#9acfff', matrix: '#75dca3', circuit: null, phosphor: '#a9d38c', ember: '#eeb47f', aurora: '#b8adf1', frost: '#b9dfe9', solar: '#c4b26b', ink: '#85714b' };
 const ease = n => 1 - (1 - n) ** 3;
-const matrixFade = 0.16;
 export class TerminalEffects {
   constructor(canvas, { preview = false, exposeDebug = true } = {}) {
     this.preview = preview; this.motionTime = 0; this.lastTime = null;
@@ -50,61 +49,19 @@ export class TerminalEffects {
     if (!this.enabled || !this.prefs.typingEffects || !this.width || !this.height) return;
     x = Math.max(0, Math.min(this.width, x)); y = Math.max(0, Math.min(this.height, y));
     if (wake) this.advance(performance.now());
-    const now = this.motionTime, burst = ++this.burst;
+    const now = this.motionTime, rotation = (this.profile.seed % 360) / 180 * Math.PI + (++this.burst * 0.47);
     // Abstract geometry only: never copy input text into effects (including passwords).
     const count = this.prefs.effectTrailCount || 16;
-    if (this.profile.style === 'matrix') {
-      this.emitMatrix(x, y, count, burst);
-    } else {
-      const rotation = (this.profile.seed % 360) / 180 * Math.PI + burst * 0.47;
-      for (let i = 0; i < count; i++) {
-        const angle = rotation + i * Math.PI * 2 / count, end = rayTarget(x, y, angle, this.width, this.height);
-        this.rays.push({ x, y, end, start: now, duration: 1.35 + i / Math.max(1, count - 1) * 0.36, bend: (i % 2 ? -1 : 1) * 0.045 });
-      }
+    const radius = Math.hypot(this.width, this.height) * 0.57;
+    for (const [i, end] of radialTargets(x, y, count, rotation, radius).entries()) {
+      this.rays.push({ x, y, end, start: now, duration: 1.45, bend: (i % 2 ? -1 : 1) * 0.045 });
     }
     this.rays = this.rays.slice(-384); if (wake) this.wake();
   }
   point(ray, t) {
     const { x, y, end, bend } = ray, dx = end.x - x, dy = end.y - y;
-    const curve = this.profile.style === 'phosphor' ? 0 : Math.sin(t * Math.PI) * bend;
+    const curve = this.profile.style === 'matrix' || this.profile.style === 'phosphor' ? 0 : Math.sin(t * Math.PI) * bend;
     return { x: x + dx * t - dy * curve, y: y + dy * t + dx * curve };
-  }
-  emitMatrix(x, y, count, burst) {
-    const { width, height, motionTime: start } = this;
-    const insetX = Math.min(width * 0.2, 110), insetY = Math.min(height * 0.28, 110);
-    const diagonal = Math.hypot(width, height);
-    for (const end of trailTargets(count, width, height, burst)) {
-      // A shared inset keeps the packet stream off the border near the prompt.
-      const control = {
-        x: Math.max(insetX, Math.min(width - insetX, (x + end.x) / 2)),
-        y: Math.max(insetY, Math.min(height - insetY, (y + end.y) / 2)),
-      };
-      const length = Math.hypot(control.x - x, control.y - y) + Math.hypot(end.x - control.x, end.y - control.y);
-      const travel = 0.32 + 0.82 * Math.sqrt(length / diagonal);
-      this.rays.push({ x, y, control, end, length, start, travel, duration: travel + matrixFade });
-    }
-  }
-  drawMatrix(ray, time, strength, size) {
-    const ctx = this.ctx, age = time - ray.start;
-    const progress = Math.min(1, age / ray.travel);
-    const opacity = strength * Math.min(1, age / 0.09, (ray.duration - age) / matrixFade);
-    const step = Math.min(0.14, 7 * size / Math.max(1, ray.length));
-    const point = t => {
-      const u = 1 - t;
-      return {
-        x: u ** 2 * ray.x + 2 * u * t * ray.control.x + t ** 2 * ray.end.x,
-        y: u ** 2 * ray.y + 2 * u * t * ray.control.y + t ** 2 * ray.end.y,
-      };
-    };
-    // Four square pixels and a brighter leading block read as a data pulse.
-    for (let i = 4; i >= 0; i--) {
-      const t = progress - i * step;
-      if (t < 0) continue;
-      const { x, y } = point(t);
-      const block = (i === 0 ? 3 : 2) * size;
-      ctx.globalAlpha = opacity * (i === 0 ? 0.92 : 0.67 - i * 0.12);
-      ctx.fillRect(x - block / 2, y - block / 2, block, block);
-    }
   }
   draw(now) {
     if (!this.ctx || !this.profile || !this.width) return;
@@ -153,11 +110,13 @@ export class TerminalEffects {
     }
     this.rays = this.rays.filter(ray => time - ray.start < ray.duration);
     for (const ray of this.rays) {
-      if (style === 'matrix') { this.drawMatrix(ray, time, strength, size); continue; }
       const progress = Math.min(1, (time - ray.start) / ray.duration), t = ease(progress), head = this.point(ray, t);
-      ctx.globalAlpha = strength * 0.9 * Math.sin(Math.PI * Math.min(1, progress * 1.1));
+      const clearance = Math.min(head.x, head.y, w - head.x, h - head.y);
+      if (clearance <= -4) continue;
+      const edgeOpacity = Math.min(1, (clearance + 4) / 15);
+      ctx.globalAlpha = edgeOpacity * strength * 0.9 * Math.sin(Math.PI * Math.min(1, progress * 1.1));
       ctx.beginPath(); const tail = this.point(ray, Math.max(0, t - 0.045)); ctx.moveTo(tail.x, tail.y); ctx.lineTo(head.x, head.y); ctx.stroke();
-      ctx.globalAlpha *= 0.7; ctx.beginPath(); ctx.arc(head.x, head.y, size * 1.2, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha *= 0.7; ctx.beginPath(); ctx.arc(head.x, head.y, size * (style === 'matrix' ? 1.4 : 1.2), 0, Math.PI * 2); ctx.fill();
       if (style === 'cosmic' || style === 'aurora' || style === 'solar') { ctx.globalAlpha *= 0.3; ctx.beginPath(); ctx.arc(head.x, head.y, 4 * size, 0, Math.PI * 2); ctx.fill(); }
     }
     ctx.globalAlpha = 1;
