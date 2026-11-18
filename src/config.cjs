@@ -49,6 +49,7 @@ function normalize(raw = {}) {
       id: text(s.id, `server-${i}`, 80), name: text(s.name, 'Server', 80),
       host: text(s.host, '', 255).trim(), user: text(s.user, '', 80).trim(),
       port: Math.round(number(Number(s.port || 22), 22, 1, 65535)),
+      ...(s.explicitPort === true ? { explicitPort: true } : {}),
       identity: text(s.identity), color: ['copper', 'blue', 'green', 'violet'].includes(s.color) ? s.color : 'blue',
       persistent: s.persistent !== false,
       autoReconnect: s.persistent !== false && s.autoReconnect !== false,
@@ -62,7 +63,7 @@ function sshArgs(server) {
   if (!Number.isInteger(server.port) || server.port < 1 || server.port > 65535) throw new Error('Port must be 1–65535.');
   const args = ['-t', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=6', '-o', 'TCPKeepAlive=yes', '-o', 'ConnectTimeout=20'];
   // Let SSH aliases retain a Port from ~/.ssh/config when the UI uses the default.
-  if (server.port !== 22) args.push('-p', String(server.port));
+  if (server.explicitPort || server.port !== 22) args.push('-p', String(server.port));
   if (server.identity) args.push('-i', server.identity.replace(/^~(?=[\\/])/, os.homedir()));
   if (server.user) args.push('-l', server.user);
   args.push('--', server.host);

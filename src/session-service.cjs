@@ -115,10 +115,10 @@ async function main(directory) {
     child.onExit(({ exitCode, signal }) => {
       if (s.deleted || s.pty !== child) return;
       s.pty = null; s.exitCode = exitCode; s.status = 'exited';
-      if (s.info.autoReconnect && exitCode === 255 && s.wasConnected && s.reconnectAttempts < 5) {
-        const delay = Math.min(30, 2 ** (++s.reconnectAttempts)); s.status = 'reconnecting';
+      if (s.info.autoReconnect && exitCode === 255 && s.wasConnected) {
+        const delay = Math.min(30, 2 ** Math.min(5, ++s.reconnectAttempts)); s.status = 'reconnecting';
         emit('status', { id: s.info.id, ...info(s), retryIn: delay, attempt: s.reconnectAttempts });
-        s.reconnectTimer = setTimeout(() => { try { spawnSession(s); } catch (error) { s.status = 'exited'; emit('service-error', { id: s.info.id, message: error.message }); } }, delay * 1000);
+        s.reconnectTimer = setTimeout(() => { try { spawnSession(s); } catch (error) { s.status = 'exited'; emit('status', info(s)); emit('service-error', { id: s.info.id, message: error.message }); persist(s); checkIdle(); } }, delay * 1000);
       } else emit('exit', { id: s.info.id, exitCode, signal, ...info(s) });
       flush(s).then(() => persist(s)); checkIdle();
     });
@@ -161,7 +161,7 @@ async function main(directory) {
       s.options.config = config; if (!s.options.serverId && fs.existsSync(s.cwd)) s.options.cwd = s.cwd;
       s.reconnectAttempts = 0; s.wasConnected = false; spawnSession(s); return info(s);
     },
-    cancelRetry: ({ id }) => { const s = sessions.get(id); if (s) { clearTimeout(s.reconnectTimer); s.status = s.pty ? 'running' : 'exited'; emit('status', info(s)); } },
+    cancelRetry: ({ id }) => { const s = sessions.get(id); if (s) { clearTimeout(s.reconnectTimer); s.status = s.pty ? 'running' : 'exited'; emit('status', info(s)); persist(s); checkIdle(); } },
     close: ({ id }) => {
       const s = sessions.get(id); if (!s) return;
       s.deleted = true; clearTimeout(s.reconnectTimer); clearTimeout(s.saveTimer);

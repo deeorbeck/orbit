@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { WorkspaceStore, leafIds } = require('../src/workspaces.cjs');
 const { shortcuts } = require('../src/shortcuts.cjs');
-const { sshHosts, shellAliasNames } = require('../src/connections.cjs');
+const { sshHosts, shellAliasNames, directSshTarget } = require('../src/connections.cjs');
 
 test('projects and separate windows retain independent nested layouts across disk reload', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'orbit-workspaces-'));
@@ -39,5 +39,15 @@ test('shortcuts have no collisions and preserve shell control characters', () =>
     const bindings = shortcuts(platform).map(s => s.accelerator);
     assert.equal(new Set(bindings).size, bindings.length);
     for (const key of ['Ctrl+C', 'Ctrl+D', 'Ctrl+W', 'Ctrl+Z']) assert(!bindings.includes(key));
+  }
+});
+
+test('simple SSH aliases preserve authentication arguments without running shell commands', () => {
+  assert.deepEqual(directSshTarget("'command ssh -p 22 -i ~/.ssh/work user@ssh.example'"), {
+    host: 'user@ssh.example', port: 22, explicitPort: true, identity: '~/.ssh/work',
+  });
+  assert.deepEqual(directSshTarget("'ssh work'"), { host: 'work', port: 22, identity: '' });
+  for (const command of ["'ssh work env'", "'ssh -L 4444:localhost:4444 work'", "'ssh $HOST'", "'ssh work; exit'", "'ssh -p 99999 work'"]) {
+    assert.equal(directSshTarget(command), null);
   }
 });

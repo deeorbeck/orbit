@@ -25,6 +25,12 @@ let config, configFile, wallpaperFile, watcher, backend, workspaces;
 let smokeStarted = false;
 let catalog = [], catalogAt = 0;
 async function refreshCatalog() { if (Date.now() - catalogAt < 30000) return catalog; catalog = await connectionCatalog(config); catalogAt = Date.now(); return catalog; }
+function withDiscoveredServer(connection) {
+  const target = connection.kind === 'shell-alias' ? connection.target : { host: connection.host };
+  if (!target) return config;
+  const profile = { ...target, id: connection.id, name: connection.name, persistent: true, autoReconnect: true };
+  return normalize({ ...config, servers: [profile, ...config.servers.filter(server => server.id !== profile.id)] });
+}
 const broadcast = (channel, data) => { for (const win of windows.values()) if (!win.isDestroyed()) win.webContents.send(channel, data); };
 const activeWindow = () => BrowserWindow.getFocusedWindow() || [...windows.values()][0];
 const windowId = win => [...windows].find(([, item]) => item === win)?.[0];
@@ -145,8 +151,11 @@ else {
       if (options.connectionId) {
         const connection = (await refreshCatalog()).find(c => c.id === options.connectionId);
         if (!connection) throw new Error(tr("Connection not found. Refresh the alias list."));
-        if (connection.kind === 'shell-alias') aliasName = connection.aliasName;
-        else { serverId = connection.id; sessionConfig = normalize({ ...config, servers: [...config.servers, { id: serverId, name: connection.name, host: connection.host, port: 22, persistent: false, autoReconnect: false }] }); }
+        if (connection.kind === 'shell-alias' && !connection.target) aliasName = connection.aliasName;
+        else {
+          serverId = connection.id;
+          sessionConfig = withDiscoveredServer(connection);
+        }
       }
       if (options.codex && options.resume && !serverId && !aliasName) sessionConfig = { ...sessionConfig, codexCommand: `${sessionConfig.codexCommand} resume` };
       const sourceRemoteSession = sourceSession?.serverId === serverId ? sourceSession?.sessionName : null;
@@ -164,14 +173,16 @@ else {
       const key = windowId(win); if (!subscriptions.has(key)) subscriptions.set(key, new Set()); subscriptions.get(key).add(id);
       const attached = await backend.request('attach', { id });
       const info = attached?.info;
-      // A live PTY needs only reattachment. After a reboot, open a fresh shell
-      // in the saved folder without rerunning a Codex command or SSH alias.
-      if (info?.status !== 'stopped' || info.codex || info.serverId || info.aliasName) return attached;
+      // A live PTY needs only reattachment. Reopen interrupted local shells
+      // and reconnect managed SSH panes that have opted into auto-reconnect.
+      const localShell = info && !info.codex && !info.serverId && !info.aliasName;
+      const persistentSsh = info?.serverId && info.persistent && info.autoReconnect;
+      if (info?.status !== 'stopped' || (!localShell && !persistentSsh)) return attached;
 
       let recovery = recoveringSessions.get(id);
       if (!recovery) {
-        recovery = backend.request('restart', { id, config: colorShell(config, app.getPath('userData')) })
-          .catch(error => console.error('Could not restore shell:', error.message))
+        recovery = restartSession(id, info)
+          .catch(error => console.error('Could not restore session:', error.message))
           .finally(() => recoveringSessions.delete(id));
         recoveringSessions.set(id, recovery);
       }
@@ -179,14 +190,17 @@ else {
       return backend.request('attach', { id });
     });
     safeHandle('terminal:cwd', (_win, id) => backend.request('cwd', { id }));
-    safeHandle('terminal:restart', async (_win, id) => {
-      const session = (await backend.request('list')).find(s => s.id === id);
+    async function restartSession(id, session) {
       let sessionConfig = config;
-      if (session?.serverId?.startsWith('ssh-config:')) {
+      if (/^(ssh-config|shell-alias):/.test(session?.serverId || '') && !session.aliasName) {
         const connection = (await refreshCatalog()).find(c => c.id === session.serverId);
-        if (connection) sessionConfig = normalize({ ...config, servers: [...config.servers, { id: connection.id, name: connection.name, host: connection.host, port: 22, persistent: false, autoReconnect: false }] });
+        if (connection) sessionConfig = withDiscoveredServer(connection);
       }
       return backend.request('restart', { id, config: colorShell(sessionConfig, app.getPath('userData')) });
+    }
+    safeHandle('terminal:restart', async (_win, id) => {
+      const session = (await backend.request('list')).find(s => s.id === id);
+      return restartSession(id, session);
     });
     safeHandle('terminal:cancelRetry', (_win, id) => backend.request('cancelRetry', { id }));
     safeHandle('terminal:close', async (win, ids) => {

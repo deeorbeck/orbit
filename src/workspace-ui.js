@@ -297,7 +297,7 @@ export class WorkspaceUI {
   }
   async performSplit(tab, source, direction) {
     if (leafIds(tab.layout).length >= 12) return this.notify(t("You can open up to 12 panes per tab."));
-    const connectionId = source.info.aliasName ? `shell-alias:${source.info.aliasName}` : source.info.serverId?.startsWith('ssh-config:') ? source.info.serverId : null;
+    const connectionId = source.info.aliasName ? `shell-alias:${source.info.aliasName}` : /^(ssh-config|shell-alias):/.test(source.info.serverId || '') ? source.info.serverId : null;
     const info = await this.api.create({ projectId: tab.projectId, inheritFrom: source.id, ...(connectionId ? { connectionId } : { serverId: source.info.serverId || null }), codex: !!source.info.codex });
     this.ownedIds.add(info.id);
     await this.mountPane(tab, info);

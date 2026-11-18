@@ -26,7 +26,7 @@ The initial community builds have no commercial Windows certificate or Apple not
 - **Real terminals:** login shell on Mac/Linux, PowerShell on Windows, searchable scrollback, per-pane type icons and current-folder headers.
 - **Codex:** one-click local launch in your chosen directory, or a separate Codex workspace on an SSH server. Codex is installed/authenticated separately.
 - **Ready connections:** the new-session picker automatically lists your SSH-config hosts and SSH aliases from zsh/bash, alongside local terminal, Codex and manually saved profiles. Existing key/agent authentication is reused. Passwords, passphrases and host-key prompts stay in the terminal.
-- **Durable remote work:** 15-second SSH keepalives, named tmux sessions, manual reattachment and bounded automatic reconnection after an established connection drops.
+- **Durable remote work:** 15-second SSH keepalives, named tmux sessions, manual reattachment and automatic reconnection with increasing delays after an established connection drops.
 - **10 designs:** Graphite, Coding, Modern, Futuristic, Midnight, Warm, Dracula, Nord, Solarized and Paper. Each theme changes terminal fonts as well as colors and type/shape details. Ten open-license fonts are bundled and work offline. A font override is optional; the default follows the theme.
 - **Your background:** fit the entire image, fill or stretch it; change brightness, dimming, fonts and sidebar live.
 - **Easy editing:** one `config.json`, with valid external edits reloaded automatically. No cloud service or telemetry.
@@ -74,13 +74,13 @@ Workspaces and bounded terminal-screen snapshots are private local files. Warm r
 
 A keepalive is not an unbreakable connection. Network loss, laptop sleep, server policy or a reboot can still disconnect SSH. Orbit sends an encrypted SSH probe every 15 seconds and tolerates six unanswered probes, helping with idle NAT/firewall timeouts.
 
-New/imported profiles enable **Doimiy sessiya** (persistent session) by default. This requires **tmux on the remote server**. For example, on Ubuntu/Debian, install it there with `sudo apt install tmux`. Orbit does not install packages or change sshd settings automatically. If tmux is absent, it reports the problem instead of silently claiming persistence; disable persistent mode for ordinary SSH.
+New/imported profiles and supported discovered hosts enable **Doimiy sessiya** (persistent session) by default. This requires **tmux on the remote server**. For example, on Ubuntu/Debian, install it there with `sudo apt install tmux`. Orbit does not install packages or change sshd settings automatically. If tmux is absent, it reports the problem instead of silently claiming persistence; disable persistent mode for ordinary SSH.
 
 Orbit creates or attaches a named tmux session per remote pane. Codex uses a separate `-codex` session. When SSH drops or a local tab closes, remote processes can keep running. Reopen Orbit to reattach surviving sessions, or reconnect from the sidebar. Authentication/2FA still applies. Parallel tabs and panels have independent names; reconnecting the same panel attaches to its previous workspace.
 
 **Avtomatik qayta ulanish** retries a previously authenticated connection up to five times with 2/4/8/16/30-second backoff. It does not loop on an initial authentication failure. It can be stopped or disabled per profile. `Ctrl+B`, then `D` detaches tmux intentionally; `exit` ends the remote shell intentionally.
 
-This does not preserve remote work through server reboot, tmux termination, OOM kills, storage loss or enforced admin policies. Local processes survive closing Orbit through the local service, as described above. Auto-discovered plain SSH/shell aliases run as originally configured; enabling remote tmux protection requires a saved profile or tmux in your alias itself.
+This does not preserve remote work through server reboot, tmux termination, OOM kills, storage loss or enforced admin policies. Local processes survive closing Orbit through the local service, as described above. SSH hosts discovered from OpenSSH config and simple shell aliases (direct ssh with an optional port or identity file) use managed tmux sessions when selected in Orbit. Shell aliases with custom commands or unsupported options run as originally configured. For those aliases, use a saved Orbit server profile or add tmux to the alias yourself.
 
 ## Configuration
 
