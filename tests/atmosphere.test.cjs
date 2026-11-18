@@ -4,11 +4,11 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { fontProfile, rayTarget, themeStyles } = require('../src/effect-profiles.cjs');
+const { fontProfile, trailTargets, themeStyles } = require('../src/effect-profiles.cjs');
 const { terminalEnv, colorShell } = require('../src/platform.cjs');
 const { normalize } = require('../src/config.cjs');
 
-test('font profiles are deterministic, distinct and produce bounded edge destinations', () => {
+test('font profiles are deterministic and distinct', () => {
   assert.equal(fontProfile('MatrixType').style, 'matrix'); assert.equal(fontProfile('Orbitron').style, 'cosmic');
   assert.notEqual(fontProfile('Muar Regular').seed, fontProfile('Muar Stencil').seed);
   assert.equal(Object.keys(themeStyles).length, 10);
@@ -19,17 +19,34 @@ test('font profiles are deterministic, distinct and produce bounded edge destina
   assert.equal(normalize({ appearance: { effectTrailCount: 99 } }).appearance.effectTrailCount, 48);
   assert.equal(normalize({ appearance: { effectTrailCount: -4 } }).appearance.effectTrailCount, 1);
   assert.equal(fontProfile('VT323').cursorStyle, 'block'); assert.equal(fontProfile('MatrixType', 'cosmic').style, 'cosmic');
-  for (let angle = 0; angle < Math.PI * 2; angle += 0.1) {
-    const p = rayTarget(230, 180, angle, 900, 600);
-    assert(p.x >= 0 && p.x <= 900 && p.y >= 0 && p.y <= 600);
-    assert(Math.min(p.x, p.y, 900 - p.x, 600 - p.y) < 0.00001, 'Every trail must terminate on an edge.');
-  }
   assert.equal(normalize().startupHome, true);
   assert.equal(normalize({ startupHome: false }).startupHome, false);
   const config = normalize({ appearance: { effectIntensity: 100, effectStyle: 'unknown', effects: false } });
   assert.equal(config.appearance.effectIntensity, 1);
   const motion = normalize({ appearance: { effectSpeed: 99, effectSize: -1, effectIntensity: 0 } });
   assert.equal(motion.appearance.effectSpeed, 3); assert.equal(motion.appearance.effectSize, 0.5); assert.equal(motion.appearance.effectIntensity, 0); assert.equal(config.appearance.effectStyle, 'auto'); assert.equal(config.appearance.effects, false);
+});
+
+test('typing bursts cover every edge evenly, including uneven and small counts', () => {
+  const width = 1440, height = 360;
+  const side = ({ x, y }) => y === 0 ? 0 : x === width ? 1 : y === height ? 2 : 3;
+  for (const count of [1, 3, 7, 16, 47, 48]) {
+    const totals = [0, 0, 0, 0];
+    for (let burst = 0; burst < 4; burst++) {
+      const ends = trailTargets(count, width, height, burst);
+      const edges = [0, 0, 0, 0];
+      for (const end of ends) {
+        const edge = side(end);
+        const fraction = edge % 2 ? end.y / height : end.x / width;
+        assert(fraction >= 0.06 && fraction <= 0.94);
+        edges[edge]++;
+        totals[edge]++;
+      }
+      assert.equal(new Set(ends.map(end => JSON.stringify(end))).size, count);
+      assert(Math.max(...edges) - Math.min(...edges) <= 1);
+    }
+    assert.deepEqual(totals, [count, count, count, count]);
+  }
 });
 
 test('terminal environment removes inherited no-color flags without mutating the parent', () => {

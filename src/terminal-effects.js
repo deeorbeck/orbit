@@ -1,7 +1,19 @@
 import profiles from './effect-profiles.cjs';
-const { fontProfile, rayTarget } = profiles;
+const { fontProfile, trailTargets } = profiles;
 const palettes = { cosmic: '#9acfff', matrix: '#75dca3', circuit: null, phosphor: '#a9d38c', ember: '#eeb47f', aurora: '#b8adf1', frost: '#b9dfe9', solar: '#c4b26b', ink: '#85714b' };
-const ease = n => 1 - (1 - n) ** 3;
+const clamp = (value, max) => Math.max(0, Math.min(max, value));
+const edgeFade = 0.18;
+const trailShapes = {
+  matrix: { bend: 0, width: 1.6, length: 29 },
+  phosphor: { bend: 0, width: 1, length: 36 },
+  circuit: { bend: 0.035, width: 1.2, length: 33 },
+  ember: { bend: 0.12, width: 1.6, length: 25 },
+  aurora: { bend: 0.16, width: 1.7, length: 52 },
+  frost: { bend: 0.05, width: 1.4, length: 30 },
+  solar: { bend: 0.12, width: 1.4, length: 46 },
+  ink: { bend: 0.08, width: 1.4, length: 22 },
+  cosmic: { bend: 0.1, width: 1.45, length: 44 },
+};
 export class TerminalEffects {
   constructor(canvas, { preview = false, exposeDebug = true } = {}) {
     this.preview = preview; this.motionTime = 0; this.lastTime = null;
@@ -47,21 +59,69 @@ export class TerminalEffects {
   }
   emit({ x, y }, wake = true) {
     if (!this.enabled || !this.prefs.typingEffects || !this.width || !this.height) return;
-    x = Math.max(0, Math.min(this.width, x)); y = Math.max(0, Math.min(this.height, y));
+    x = clamp(x, this.width); y = clamp(y, this.height);
     if (wake) this.advance(performance.now());
-    const now = this.motionTime, rotation = (this.profile.seed % 360) / 180 * Math.PI + (++this.burst * 0.47);
-    // Abstract geometry only: never copy input text into effects (including passwords).
-    const count = this.prefs.effectTrailCount || 16;
-    for (let i = 0; i < count; i++) {
-      const angle = rotation + i * Math.PI * 2 / count, end = rayTarget(x, y, angle, this.width, this.height);
-      this.rays.push({ x, y, end, start: now, duration: 1.35 + i / Math.max(1, count - 1) * 0.36, bend: (i % 2 ? -1 : 1) * 0.045 });
-    }
+    const shape = trailShapes[this.profile.style] || trailShapes.cosmic;
+    const count = this.prefs.effectTrailCount || 16, burst = this.burst++;
+    const diagonal = Math.hypot(this.width, this.height);
+    // Draw abstract shapes only. Terminal input never enters the effect.
+    trailTargets(count, this.width, this.height, burst).forEach((end, index) => {
+      const dx = end.x - x, dy = end.y - y, distance = Math.hypot(dx, dy);
+      const bend = shape.bend * ((index + burst) % 2 ? -1 : 1);
+      const control = {
+        x: clamp(x + dx * 0.5 - dy * bend, this.width),
+        y: clamp(y + dy * 0.5 + dx * bend, this.height),
+      };
+      // Pull paths into the pane when the cursor and target share a nearby
+      // edge, so their tails don't all slide along the same border.
+      const insetX = Math.min(this.width * 0.22, 124);
+      const insetY = Math.min(this.height * 0.34, 124);
+      if (end.x === 0 && x < insetX) control.x = Math.max(control.x, insetX);
+      if (end.x === this.width && this.width - x < insetX) control.x = Math.min(control.x, this.width - insetX);
+      if (end.y === 0 && y < insetY) control.y = Math.max(control.y, insetY);
+      if (end.y === this.height && this.height - y < insetY) control.y = Math.min(control.y, this.height - insetY);
+      const travel = 0.28 + 0.91 * Math.sqrt(distance / diagonal);
+      this.rays.push({ x, y, end, control, shape, distance, start: this.motionTime, travel });
+    });
     this.rays = this.rays.slice(-384); if (wake) this.wake();
   }
   point(ray, t) {
-    const { x, y, end, bend } = ray, dx = end.x - x, dy = end.y - y;
-    const curve = this.profile.style === 'matrix' || this.profile.style === 'phosphor' ? 0 : Math.sin(t * Math.PI) * bend;
-    return { x: x + dx * t - dy * curve, y: y + dy * t + dx * curve };
+    const remaining = 1 - t, mid = 2 * remaining * t;
+    return {
+      x: remaining ** 2 * ray.x + mid * ray.control.x + t ** 2 * ray.end.x,
+      y: remaining ** 2 * ray.y + mid * ray.control.y + t ** 2 * ray.end.y,
+    };
+  }
+  drawTrail(ray, time, strength, size) {
+    const ctx = this.ctx, age = time - ray.start;
+    const progress = Math.min(1, age / ray.travel);
+    const t = 1 - (1 - progress) ** 1.35;
+    const head = this.point(ray, t);
+    const span = Math.min(0.31, ray.shape.length * size / Math.max(1, ray.distance));
+    const tail = this.point(ray, Math.max(0, t - span));
+    const shoulder = this.point(ray, Math.max(0, t - span * 0.26));
+    const dx = head.x - shoulder.x, dy = head.y - shoulder.y;
+    const length = Math.hypot(dx, dy);
+    if (length < 0.5) return;
+    const width = ray.shape.width * size * Math.min(1, length / 5);
+    const ox = -dy * width / length, oy = dx * width / length;
+    const alpha = strength * Math.min(1, age / 0.08) * (1 - clamp((age - ray.travel) / edgeFade, 1));
+    // A tapered silhouette follows the curve, with a narrow highlight
+    // near its leading point. Keep both behind the terminal text.
+    ctx.globalAlpha = alpha * 0.47;
+    ctx.beginPath();
+    ctx.moveTo(tail.x, tail.y);
+    ctx.lineTo(shoulder.x + ox, shoulder.y + oy);
+    ctx.lineTo(head.x, head.y);
+    ctx.lineTo(shoulder.x - ox, shoulder.y - oy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = alpha * 0.7;
+    ctx.lineWidth = Math.max(0.55, size * 0.65);
+    ctx.beginPath();
+    ctx.moveTo(shoulder.x, shoulder.y);
+    ctx.lineTo(head.x, head.y);
+    ctx.stroke();
   }
   draw(now) {
     if (!this.ctx || !this.profile || !this.width) return;
@@ -108,14 +168,8 @@ export class TerminalEffects {
         ctx.beginPath(); ctx.moveTo(0, h * (0.7 + i * 0.1) + shift); ctx.bezierCurveTo(w * 0.3, h * 0.95, w * 0.6, h * 0.3 + shift, w, h * 0.65 + shift); ctx.stroke();
       }
     }
-    this.rays = this.rays.filter(ray => time - ray.start < ray.duration);
-    for (const ray of this.rays) {
-      const progress = Math.min(1, (time - ray.start) / ray.duration), t = ease(progress), head = this.point(ray, t);
-      ctx.globalAlpha = strength * 0.9 * Math.sin(Math.PI * Math.min(1, progress * 1.1));
-      ctx.beginPath(); const tail = this.point(ray, Math.max(0, t - 0.045)); ctx.moveTo(tail.x, tail.y); ctx.lineTo(head.x, head.y); ctx.stroke();
-      ctx.globalAlpha *= 0.7; ctx.beginPath(); ctx.arc(head.x, head.y, size * (style === 'matrix' ? 1.4 : 1.2), 0, Math.PI * 2); ctx.fill();
-      if (style === 'cosmic' || style === 'aurora' || style === 'solar') { ctx.globalAlpha *= 0.3; ctx.beginPath(); ctx.arc(head.x, head.y, 4 * size, 0, Math.PI * 2); ctx.fill(); }
-    }
+    this.rays = this.rays.filter(ray => time - ray.start < ray.travel + edgeFade);
+    for (const ray of this.rays) this.drawTrail(ray, time, strength, size);
     ctx.globalAlpha = 1;
   }
 }
