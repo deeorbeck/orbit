@@ -3,6 +3,8 @@
 An MIT-licensed desktop terminal for **coding, Codex and persistent SSH workspaces**.
 Built with Electron, xterm.js and node-pty. The interface defaults to English, with Uzbek available in Settings.
 
+![Orbit Terminal Preview](assets/preview.png)
+
 [Download the latest release](https://github.com/deeorbeck/orbit/releases/latest) · [Report an issue](https://github.com/deeorbeck/orbit/issues) · [Contribute](CONTRIBUTING.md)
 
 ## Downloads

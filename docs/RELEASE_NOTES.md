@@ -1,3 +1,11 @@
+## Orbit Terminal 0.3.24 — persistent remote sessions and refined typing trails
+
+- Keep discovered SSH connections on persistent remote sessions with keepalive and automatic reconnection.
+- Typing trails spread evenly toward all terminal edges with circular bursts and restored classic Matrix trails.
+- Recover interrupted local shells and support stable macOS signing identity.
+- Meaningful tab names based on active directory and conversation titles.
+- Add preview screenshot to README.
+
 ## Orbit Terminal 0.3.18 — meaningful tab names
 
 - Name ordinary tabs after their current folder and update them when the directory changes.
