@@ -68,6 +68,8 @@ jobs:
           if [[ -n "$CSC_LINK" ]]; then
             : "${CSC_NAME:?Set MAC_CSC_NAME to the Developer ID certificate name or team ID}"
             signing+=("-c.mac.identity=$CSC_NAME" "-c.mac.hardenedRuntime=true" "-c.forceCodeSigning=true")
+          else
+            unset CSC_LINK CSC_KEY_PASSWORD CSC_NAME
           fi
           npx electron-builder --mac --${{ matrix.arch }} --publish never "${signing[@]}"
       - name: Test packaged desktop app (Linux)
