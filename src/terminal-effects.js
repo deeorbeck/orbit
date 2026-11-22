@@ -6,11 +6,17 @@ const bound = (value, max) => Math.max(0, Math.min(max, value));
 export class TerminalEffects {
   constructor(canvas, { preview = false, exposeDebug = true } = {}) {
     this.preview = preview; this.motionTime = 0; this.lastTime = null;
-    this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.rays = []; this.frame = 0; this.burst = 0; this.nodes = []; this.active = document.hasFocus(); this.reduce = matchMedia('(prefers-reduced-motion: reduce)');
+    this.canvas = canvas; this.ctx = canvas.getContext('2d'); this.rays = []; this.frame = 0; this.burst = 0; this.nodes = []; this.reduce = matchMedia('(prefers-reduced-motion: reduce)');
     new ResizeObserver(() => this.resize()).observe(canvas.parentElement);
-    document.addEventListener('visibilitychange', () => this.wake());
-    window.addEventListener('blur', () => { this.active = false; this.lastTime = null; cancelAnimationFrame(this.frame); this.frame = 0; this.rays = []; });
-    window.addEventListener('focus', () => { this.active = true; this.lastTime = null; this.wake(); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        cancelAnimationFrame(this.frame);
+        this.frame = 0;
+        this.lastTime = null;
+      } else {
+        this.wake();
+      }
+    });
     this.reduce.addEventListener('change', () => this.configure(this.last));
     if (exposeDebug) window.__orbitEffectsSnapshot = () => ({ enabled: !!this.enabled, style: this.profile?.style, rays: this.rays.length, width: this.width, height: this.height, reducedMotion: this.reduce.matches, speed: this.prefs?.effectSpeed, visibility: this.prefs?.effectIntensity, size: this.prefs?.effectSize, count: this.prefs?.effectTrailCount, motionTime: this.motionTime });
   }
@@ -34,7 +40,7 @@ export class TerminalEffects {
     return profile;
   }
   wake() {
-    if (!this.enabled || !this.active || document.hidden || !this.width || !this.height || this.frame) return;
+    if (!this.enabled || document.hidden || !this.width || !this.height || this.frame) return;
     const loop = now => {
       this.frame = 0; if (!this.enabled || document.hidden || !this.width || !this.height) return;
       if (!this.lastDraw || now - this.lastDraw >= 32) { this.draw(now); this.lastDraw = now; }

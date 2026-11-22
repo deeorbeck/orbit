@@ -102,6 +102,14 @@ module.exports = (win, app) => {
         assert.equal(await evaluate('window.__orbitEffectsSnapshot().enabled'), false);
         assert.equal(await evaluate('window.__orbitEffectsSnapshot().rays'), 0);
         await evaluate('document.querySelector("#effects-button").click()');
+        if (await evaluate('window.__orbitEffectsSnapshot().enabled')) {
+          const before = await evaluate(`(() => {
+            // Keep the pane visible while simulating focus moving to another app.
+            window.dispatchEvent(new Event('blur'));
+            return window.__orbitEffectsSnapshot().motionTime;
+          })()`);
+          await until(`window.__orbitEffectsSnapshot().motionTime > ${before + 0.08}`);
+        }
         await evaluate('document.querySelector(".pane-group:not([hidden]) .xterm-helper-textarea").focus()');
         win.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'a' }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'a' });
         if (!(await evaluate('window.__orbitEffectsSnapshot().reducedMotion'))) { try { await until('window.__orbitEffectsSnapshot().rays > 0'); } catch (error) { throw new Error(error.message + ' effects=' + JSON.stringify(await evaluate('window.__orbitEffectsSnapshot()'))); } }
