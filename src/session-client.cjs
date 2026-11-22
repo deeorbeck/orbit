@@ -42,6 +42,7 @@ class SessionClient extends EventEmitter {
       });
       socket.on('close', () => {
         clearTimeout(timeout);
+        if (!settled) reject(new Error('Session service closed during authentication.'));
         for (const p of this.pending.values()) { clearTimeout(p.timer); p.reject(new Error('Session service disconnected.')); }
         this.pending.clear();
         if (settled && !this.closed) this.emit('disconnected');
