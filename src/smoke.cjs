@@ -116,7 +116,12 @@ module.exports = (win, app) => {
         const slow = await evaluate('(()=>{window.__orbitEffectsFrame(0);const before=window.__orbitEffectsSnapshot().motionTime;window.__orbitEffectsFrame(100);return window.__orbitEffectsSnapshot().motionTime-before})()');
         await evaluate(`(()=>{const slider=document.querySelector('#effect-speed');slider.value=225;slider.dispatchEvent(new Event('input'))})()`);
         const fast = await evaluate('(()=>{window.__orbitEffectsFrame(0);const before=window.__orbitEffectsSnapshot().motionTime;window.__orbitEffectsFrame(100);return window.__orbitEffectsSnapshot().motionTime-before})()');
-        assert(fast > slow * 5, 'Speed must change the actual animation clock immediately.');
+        if (await evaluate('window.__orbitEffectsSnapshot().reducedMotion')) {
+          assert.equal(slow, 0, 'Reduced motion must stop the animation clock.');
+          assert.equal(fast, 0, 'Increasing speed must respect reduced motion.');
+        } else {
+          assert(fast > slow * 5, `Speed must change the animation clock immediately (slow: ${slow}, fast: ${fast}).`);
+        }
         await evaluate(`(()=>{const slider=document.querySelector('#effect-intensity');slider.value=0;slider.dispatchEvent(new Event('input'))})()`);
         assert.equal(await evaluate('window.__orbitEffectsSnapshot().enabled'), false, 'Zero visibility hides the effect and stops its animation.');
         await evaluate(`(()=>{const slider=document.querySelector('#effect-intensity');slider.value=80;slider.dispatchEvent(new Event('input'));const size=document.querySelector('#effect-size');size.value=175;size.dispatchEvent(new Event('input'))})()`);
