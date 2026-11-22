@@ -1,4 +1,4 @@
-## Orbit Terminal 0.3.28 — persistent remote sessions and refined typing trails
+## Orbit Terminal 0.3.29 — persistent remote sessions and refined typing trails
 
 - Keep discovered SSH connections on persistent remote sessions with keepalive and automatic reconnection.
 - Typing trails spread evenly toward all terminal edges with circular bursts and restored classic Matrix trails.

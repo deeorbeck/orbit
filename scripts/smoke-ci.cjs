@@ -18,7 +18,8 @@ const log = fs.readFileSync(logfile, 'utf8');
 process.stdout.write(log);
 try { fs.rmSync(directory, { recursive: true }); } catch {}
 if (result.status !== 0) {
-  const error = log.split(/\r?\n/).find(line => line.startsWith('ORBIT_SMOKE_FAIL:'));
+  const start = log.indexOf('ORBIT_SMOKE_FAIL:');
+  const error = start < 0 ? '' : log.slice(start).split('ORBIT_SMOKE_STATE:')[0].trim();
   const message = (error || result.error?.message || `Desktop smoke test stopped: ${result.signal || result.status}`)
     .replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
   console.error(`::error title=Desktop smoke test::${message}`);

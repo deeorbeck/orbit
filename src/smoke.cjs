@@ -39,7 +39,7 @@ module.exports = (win, app) => {
         assert.equal(info.status, 'running');
         assert.notEqual(info.pid, expected.sessions.find(s => s.id === info.id).pid);
         assert.equal(fs.realpathSync.native(info.cwd), fs.realpathSync.native(expected.childFolder));
-        assert(snapshot.includes('DESKTOP_STATE:kept'));
+        assert(snapshot.includes('DESKTOP_STATE:kept'), 'Cold recovery must preserve scrollback.');
         const command = process.platform === 'win32' ? "Write-Output ('COLD_' + 'READY')" : "printf '\\nCOLD_%s\\n' READY";
         await client.request('write', { id: info.id, data: command + '\r' });
         await until(async () => (await client.request('attach', { id: info.id })).snapshot.includes('COLD_READY'));
@@ -58,7 +58,7 @@ module.exports = (win, app) => {
         assert.equal(await evaluate('window.__orbitEffectsSnapshot().size'), 1.75);
         assert.equal(await evaluate('window.__orbitEffectsSnapshot().count'), 12);
         assert.equal(await evaluate('getComputedStyle(document.body).getPropertyValue("--terminal-bg").trim()'), '#132839');
-        assert((await evaluate('getComputedStyle(document.querySelector(".pane-group:not([hidden]) .xterm-rows")).fontFamily')).includes(expected.customFontFace));
+        await until(`getComputedStyle(document.querySelector('.pane-group:not([hidden]) .xterm-rows')).fontFamily.includes(${JSON.stringify(expected.customFontFace)})`);
         assert.equal(await evaluate('!!document.querySelector(".pane-group:not([hidden]) .split-node.vertical")'), true);
         const command = process.platform === 'win32' ? "Write-Output ('AFTER_GUI:'+$global:ORBIT_KEEP)" : "printf '\\nAFTER_GUI:%s\\n' \"$ORBIT_KEEP\"";
         await client.request('write', { id: expected.originalId, data: command + '\r' });
@@ -84,9 +84,9 @@ module.exports = (win, app) => {
           assert(loaded > 0, `${font.name} must load offline from its bundled TTF.`);
           await evaluate(`document.querySelector('#font-family').value = ${JSON.stringify(font.fontFamily)}; document.querySelector('#font-family').dispatchEvent(new Event('change'))`);
           await until(`getComputedStyle(document.querySelector('.xterm-rows')).fontFamily.includes(${JSON.stringify(font.face || font.name)})`);
-          assert((await evaluate('document.querySelector("#font-preview").style.fontFamily')).includes(font.face || font.name));
+          await until(`document.querySelector('#font-preview').style.fontFamily.includes(${JSON.stringify(font.face || font.name)})`);
           assert((await evaluate('getComputedStyle(document.querySelector(".wordmark")).fontFamily')).includes(font.face || font.name), 'The selected font must also style the Orbit wordmark.');
-          assert(await evaluate(`!![...document.querySelector('#font-family').options].find(option => option.value === ${JSON.stringify(font.fontFamily)})`));
+          assert(await evaluate(`!![...document.querySelector('#font-family').options].find(option => option.value === ${JSON.stringify(font.fontFamily)})`), `Font picker must list ${font.name}.`);
         }
         await evaluate('document.querySelector("#font-family").value="";document.querySelector("#font-family").dispatchEvent(new Event("change"))');
         await until('document.querySelector("#font-family").value === ""');
@@ -266,7 +266,7 @@ module.exports = (win, app) => {
         try { await until(async () => (await snapshot()).tabs.length === 3); } catch (error) { throw new Error(error.message + ' exit=' + JSON.stringify(await client.request('attach', { id: exitId }))); }
         assert.equal(BrowserWindow.getAllWindows().length, 1, 'Pane/tab close and exit must not quit Orbit.');
         await evaluate('document.querySelectorAll("[role=tab]")[1].click()');
-        const imageLoads = await evaluate('new Promise(resolve => {const image = new Image();image.onload = () => resolve(image.naturalWidth > 0);image.onerror = () => resolve(false);image.src = "orbit://wallpaper/image";})'); assert(imageLoads);
+        const imageLoads = await evaluate('new Promise(resolve => {const image = new Image();image.onload = () => resolve(image.naturalWidth > 0);image.onerror = () => resolve(false);image.src = "orbit://wallpaper/image";})'); assert(imageLoads, 'The bundled wallpaper must load over the Orbit protocol.');
         await evaluate('document.querySelector("#new-theme").click()');
         await until('document.querySelector("#theme-dialog").open');
         const customFont = (await evaluate('window.orbit.init().then(value => value.localFonts)'))[0];
@@ -275,7 +275,7 @@ module.exports = (win, app) => {
         await until('!document.querySelector("#theme-dialog").open && document.body.dataset.theme.startsWith("custom-")');
         const customThemeId = await evaluate('document.body.dataset.theme');
         assert.equal(await evaluate('getComputedStyle(document.body).getPropertyValue("--terminal-bg").trim()'), '#132839');
-        assert((await evaluate('getComputedStyle(document.querySelector(".pane-group:not([hidden]) .xterm-rows")).fontFamily')).includes(customFont.face));
+        await until(`getComputedStyle(document.querySelector('.pane-group:not([hidden]) .xterm-rows')).fontFamily.includes(${JSON.stringify(customFont.face)})`);
         await evaluate('document.querySelector("#edit-theme").click()');
         await until('document.querySelector("#theme-dialog").open');
         await evaluate(`document.querySelector('#theme-name').value='QA Custom Edited'; document.querySelector('#theme-form').requestSubmit()`);
@@ -293,7 +293,7 @@ module.exports = (win, app) => {
         assert.equal(await evaluate('document.querySelector("#theme-dialog").open'), true, 'Deleting requires a second click.');
         await evaluate('document.querySelector("#delete-theme").click()');
         await until('!document.querySelector("#theme-dialog").open');
-        assert(!(await evaluate('window.orbit.init().then(value => value.config.customThemes)')).some(theme => theme.id === temporaryId));
+        await until(async () => !(await evaluate('window.orbit.init().then(value => value.config.customThemes)')).some(theme => theme.id === temporaryId));
         await evaluate(`document.querySelector('[data-theme="${customThemeId}"]').click()`);
         await until(async () => (await evaluate('window.orbit.init().then(value => value.config.appearance.theme)')) === customThemeId);
 
