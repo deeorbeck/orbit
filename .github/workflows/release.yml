@@ -49,10 +49,10 @@ jobs:
       - run: npm run build
       - name: Desktop and PTY smoke test (Linux)
         if: runner.os == 'Linux'
-        run: xvfb-run -a npm run smoke
+        run: xvfb-run -a node scripts/smoke-ci.cjs
       - name: Desktop and PTY smoke test
         if: runner.os != 'Linux'
-        run: npm run smoke
+        run: node scripts/smoke-ci.cjs
       - name: Build installers
         if: runner.os != 'macOS'
         run: npx electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish never
@@ -74,12 +74,12 @@ jobs:
         if: runner.os == 'Linux'
         env:
           ORBIT_PACKAGED: '1'
-        run: xvfb-run -a npm run smoke
+        run: xvfb-run -a node scripts/smoke-ci.cjs
       - name: Test packaged desktop app
         if: runner.os != 'Linux'
         env:
           ORBIT_PACKAGED: '1'
-        run: npm run smoke
+        run: node scripts/smoke-ci.cjs
       - uses: actions/upload-artifact@v4
         with:
           name: orbit-${{ matrix.platform }}-${{ matrix.arch }}

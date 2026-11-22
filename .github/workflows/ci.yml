@@ -23,7 +23,7 @@ jobs:
       - run: npm run build
       - name: Desktop and PTY smoke test (Linux)
         if: runner.os == 'Linux'
-        run: xvfb-run -a npm run smoke
+        run: xvfb-run -a node scripts/smoke-ci.cjs
       - name: Desktop and PTY smoke test
         if: runner.os != 'Linux'
-        run: npm run smoke
+        run: node scripts/smoke-ci.cjs
